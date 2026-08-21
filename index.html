@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Planner</title>
+<!-- iPhone "Add to Home Screen" (PWA) support -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Planner" />
+<meta name="theme-color" content="#4F6D64" />
+<link rel="apple-touch-icon" href="icon.png" />
+<link rel="icon" type="image/png" href="icon.png" />
+<link rel="manifest" href="manifest.json" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --paper: #F6F4EF;
+    --paper-raised: #FFFFFF;
+    --ink: #262A27;
+    --ink-soft: #6B7069;
+    --ink-faint: #9A9E96;
+    --line: #E4E0D5;
+    --line-soft: #EDEAE0;
+    --accent: #4F6D64;
+    --accent-deep: #3B5049;
+    --accent-soft: #E1E9E4;
+    --amber: #B07C3C;
+    --amber-soft: #F1E4CE;
+    --rose: #B8604F;
+    --rose-soft: #F3E1DC;
+    --slate: #6C7A93;
+    --slate-soft: #E4E8EF;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(38,42,39,0.04), 0 4px 16px rgba(38,42,39,0.05);
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  ::selection{ background: var(--accent-soft); }
+  *:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  .app{
+    max-width: 1180px; margin: 0 auto;
+    padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(80px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap: 20px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .brand-block .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 6px;
+  }
+  .brand-block h1{
+    font-family:'Fraunces', serif; font-weight: 500; font-size: 34px;
+    margin: 0; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .brand-block .subdate{
+    font-size: 13px; color: var(--ink-soft); margin-top: 4px;
+  }
+
+  .tabs{
+    display:flex; gap: 4px; background: var(--paper-raised);
+    padding: 4px; border-radius: 999px; border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  .tab-btn{
+    border: none; background: transparent; cursor: pointer;
+    font-family:'Inter'; font-size: 13.5px; font-weight: 600;
+    padding: 9px 18px; border-radius: 999px; color: var(--ink-soft);
+    transition: background .15s ease, color .15s ease;
+  }
+  .tab-btn:hover{ color: var(--ink); }
+  .tab-btn.active{ background: var(--accent); color: #fff; }
+
+  /* ---------- Quick add ---------- */
+  .quickadd{
+    display:flex; gap: 10px; align-items:center;
+    background: var(--paper-raised); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 6px 6px 20px;
+    box-shadow: var(--shadow); margin-bottom: 8px;
+  }
+  .quickadd .qa-icon{ color: var(--accent); font-size: 15px; flex-shrink:0; }
+  .quickadd input{
+    flex:1; border: none; background: transparent; font-family:'Inter';
+    font-size: 14.5px; color: var(--ink); padding: 10px 0;
+  }
+  .quickadd input:focus{ outline: none; }
+  .quickadd input::placeholder{ color: var(--ink-faint); }
+  .quickadd button{
+    border:none; background: var(--accent); color:#fff; font-weight:600;
+    font-size: 13.5px; padding: 10px 20px; border-radius: 999px; cursor:pointer;
+    transition: background .15s ease; display:flex; align-items:center; gap:7px;
+  }
+  .quickadd button:hover{ background: var(--accent-deep); }
+  .quickadd button:disabled{ opacity: .6; cursor: default; }
+  .quickadd-hint{
+    font-size: 12px; color: var(--ink-faint); margin: 0 0 6px 20px;
+  }
+  .quickadd-error{
+    font-size: 12.5px; color: var(--rose); margin: 0 0 14px 20px;
+  }
+
+  .spinner{
+    width: 13px; height:13px; border-radius:50%;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color:#fff;
+    animation: spin .7s linear infinite; display:inline-block;
+  }
+  .spinner.dark{ border: 2px solid var(--line); border-top-color: var(--accent); }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* ---------- Sync bar ---------- */
+  .sync-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-faint);
+    padding: 0 4px 22px 20px; flex-wrap:wrap; gap:8px;
+  }
+  .sync-bar .sync-status{ display:flex; align-items:center; gap:7px; }
+  .sync-bar button{
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; padding: 5px 12px;
+    border-radius: 999px; cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .sync-bar button:hover{ color: var(--accent-deep); border-color: var(--accent-soft); }
+  .sync-dot{ width:6px; height:6px; border-radius:50%; background: var(--accent); flex-shrink:0; }
+  .sync-dot.error{ background: var(--rose); }
+  .error-banner{
+    background: var(--rose-soft); color: var(--rose); border-radius: var(--radius);
+    padding: 12px 16px; font-size: 13px; margin: -10px 0 22px; display:flex;
+    justify-content:space-between; align-items:center; gap: 12px; flex-wrap:wrap;
+  }
+  .error-banner button{
+    border: 1px solid var(--rose); background: transparent; color: var(--rose);
+    font-size: 12px; font-weight:600; padding: 5px 12px; border-radius: 999px; cursor:pointer;
+  }
+
+  /* ---------- Approval panel ---------- */
+  .approval-panel{
+    background: var(--paper-raised); border: 1px solid var(--accent-soft); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow); margin-bottom: 24px;
+  }
+  .approval-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px; flex-wrap:wrap; gap:10px; }
+  .approval-head h3{ font-family:'Fraunces', serif; font-weight:500; font-size: 16px; margin:0; }
+  .approval-head .sub{ font-size: 12px; color: var(--ink-faint); margin-top:2px; }
+  .approval-head-actions{ display:flex; gap:8px; }
+  .approval-item{
+    border: 1px solid var(--line); border-radius: 9px; padding: 14px 16px; margin-bottom: 10px;
+    background: var(--paper);
+  }
+  .approval-item:last-child{ margin-bottom:0; }
+  .approval-item-type{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; text-transform:uppercase;
+    letter-spacing:0.06em; color: var(--accent-deep); margin-bottom: 10px; display:flex; align-items:center; gap:8px;
+  }
+  .approval-item-type.task{ color: var(--slate); }
+  .badge-suggested{
+    background: var(--amber-soft); color: var(--amber); font-size:10px; padding: 1px 7px;
+    border-radius: 999px; text-transform:none; letter-spacing:0;
+  }
+  .approval-fields{ display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  .approval-fields.task-fields{ grid-template-columns: 2fr 1fr 1fr; }
+  .approval-fields .full{ grid-column: 1 / -1; }
+  .approval-fields label{ display:block; font-size: 10.5px; text-transform:uppercase; letter-spacing:0.04em; color: var(--ink-faint); margin-bottom:4px; font-family:'IBM Plex Mono', monospace; }
+  .approval-fields input, .approval-fields textarea{
+    width:100%; border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px;
+    font-family:'Inter'; font-size: 13px; color: var(--ink); background: #fff;
+  }
+  .approval-fields textarea{ resize:vertical; min-height: 36px; }
+  .approval-item-footer{ display:flex; justify-content:space-between; align-items:center; margin-top: 12px; gap: 10px; flex-wrap:wrap; }
+  .approval-item-status{ font-size: 12px; color: var(--rose); }
+  .approval-item-actions{ display:flex; gap:8px; }
+  .btn-approve{
+    border:none; background: var(--accent); color:#fff; font-size: 12.5px; font-weight:600;
+    padding: 7px 15px; border-radius: 999px; cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .btn-approve:hover{ background: var(--accent-deep); }
+  .btn-approve:disabled{ opacity:.6; cursor:default; }
+  .btn-remove{
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+    font-size: 12.5px; font-weight:600; padding: 7px 13px; border-radius: 999px; cursor:pointer;
+  }
+  .btn-remove:hover{ border-color: var(--rose); color: var(--rose); }
+
+  section.view{ display:none; }
+  section.view.active{ display:block; }
+
+  h2.section-title{
+    font-family:'Fraunces', serif; font-weight: 500; font-size: 18px;
+    margin: 0 0 14px; color: var(--ink); display:flex; align-items:center; gap:8px;
+  }
+  .count-badge{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-faint);
+    background: var(--line-soft); padding: 2px 8px; border-radius: 999px;
+  }
+
+  /* ---------- Today ---------- */
+  .today-grid{ display:grid; grid-template-columns: 1.15fr 1fr; gap: 22px; align-items:start; }
+  @media (max-width: 860px){ .today-grid{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: var(--paper-raised); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow);
+  }
+  .panel + .panel{ margin-top: 18px; }
+
+  .event-row{
+    display:flex; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .event-row:last-child{ border-bottom: none; }
+  .event-time{
+    font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent-deep);
+    min-width: 68px; padding-top: 2px; flex-shrink:0;
+  }
+  .event-time.allday{ color: var(--ink-faint); }
+  .event-title{ font-size: 14px; color: var(--ink); font-weight: 500; }
+  .event-meta{ font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  .task-row{
+    display:flex; align-items:flex-start; gap: 11px; padding: 10px 0;
+    border-bottom: 1px solid var(--line-soft); cursor:pointer;
+  }
+  .task-row:last-child{ border-bottom:none; }
+  .task-check{
+    width: 17px; height:17px; border-radius: 5px; border: 1.5px solid var(--ink-faint);
+    flex-shrink:0; margin-top: 2px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    background: #fff;
+  }
+  .task-check.done{ background: var(--accent); border-color: var(--accent); color:#fff; font-size: 11px; }
+  .task-body{ flex:1; min-width:0; }
+  .task-name{ font-size: 14px; color: var(--ink); font-weight:500; }
+  .task-row.is-done .task-name{ color: var(--ink-faint); text-decoration: line-through; }
+  .task-sub{ font-size: 12px; color: var(--ink-soft); margin-top: 2px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .pill{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; font-weight:500;
+  }
+  .pill.high{ background: var(--rose-soft); color: var(--rose); }
+  .pill.medium{ background: var(--amber-soft); color: var(--amber); }
+  .pill.low{ background: var(--slate-soft); color: var(--slate); }
+  .pill.overdue{ background: var(--rose-soft); color: var(--rose); }
+
+  .empty-state{ color: var(--ink-faint); font-size: 13.5px; padding: 6px 0 2px; }
+
+  /* ---------- Week ---------- */
+  .week-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; flex-wrap:wrap; gap:10px; }
+  .week-nav{ display:flex; align-items:center; gap: 10px; }
+  .week-nav button{
+    border: 1px solid var(--line); background: var(--paper-raised); width: 32px; height:32px;
+    border-radius: 50%; cursor:pointer; font-size: 15px; color: var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; transition: all .15s ease;
+  }
+  .week-nav button:hover{ background: var(--accent-soft); color: var(--accent-deep); border-color: var(--accent-soft); }
+  .week-label{ font-family:'Fraunces', serif; font-size: 17px; font-weight:500; min-width: 190px; text-align:center; }
+  .week-today-btn{
+    border:1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+    font-size: 12.5px; font-weight:600; padding: 7px 14px; border-radius: 999px; cursor:pointer;
+  }
+  .week-today-btn:hover{ color: var(--accent-deep); border-color: var(--accent-soft); }
+
+  .week-grid{
+    display:grid; grid-template-columns: repeat(7, minmax(150px,1fr));
+    gap: 10px; overflow-x:auto; padding-bottom: 6px;
+  }
+  .day-col{
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
+    min-height: 230px; box-shadow: var(--shadow); display:flex; flex-direction:column;
+  }
+  .day-col.is-today{ border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+  .day-col-head{
+    padding: 12px 13px 10px; border-bottom: 1px solid var(--line-soft);
+  }
+  .day-name{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing:0.08em; text-transform:uppercase; color: var(--ink-faint); }
+  .day-num{ font-family:'Fraunces', serif; font-size: 20px; font-weight:500; margin-top: 2px; color: var(--ink); }
+  .is-today .day-num{ color: var(--accent-deep); }
+  .day-col-body{ padding: 8px 11px 12px; flex:1; }
+  .day-event{ padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+  .day-event:last-of-type{ border-bottom: none; }
+  .day-event-time{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--accent-deep); }
+  .day-event-time.allday{ color: var(--ink-faint); }
+  .day-event-title{ font-size: 12.5px; color: var(--ink); margin-top: 1px; line-height:1.35; }
+  .day-tasks{ margin-top: 8px; display:flex; flex-direction:column; gap: 5px; }
+  .day-task-chip{
+    display:flex; align-items:center; gap: 6px; font-size: 12px; color: var(--ink-soft);
+    cursor:pointer;
+  }
+  .day-task-chip .dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .day-task-chip.is-done{ text-decoration: line-through; color: var(--ink-faint); }
+  .day-empty{ font-size: 11.5px; color: var(--ink-faint); padding: 4px 0; }
+
+  /* ---------- Tasks ---------- */
+  .tasks-toolbar{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap: 12px; margin-bottom: 16px; }
+  .filter-pills{ display:flex; gap: 6px; flex-wrap:wrap; }
+  .filter-pill{
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+    font-size: 12.5px; font-weight: 600; padding: 6px 13px; border-radius: 999px; cursor:pointer;
+  }
+  .filter-pill.active{ background: var(--accent); color:#fff; border-color: var(--accent); }
+  select.sort-select{
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+    font-size: 12.5px; font-weight:600; padding: 7px 12px; border-radius: 999px; cursor:pointer;
+  }
+  .add-task-btn{
+    border:none; background: var(--accent); color:#fff; font-weight:600; font-size: 13px;
+    padding: 9px 18px; border-radius: 999px; cursor:pointer;
+  }
+  .add-task-btn:hover{ background: var(--accent-deep); }
+
+  .task-form{
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .form-grid{ display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px){ .form-grid{ grid-template-columns: 1fr 1fr; } }
+  .field label{ display:block; font-size: 11px; text-transform:uppercase; letter-spacing:0.05em; color: var(--ink-faint); margin-bottom: 5px; font-family:'IBM Plex Mono', monospace; }
+  .field input, .field select, .field textarea{
+    width:100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+    font-family:'Inter'; font-size: 13.5px; color: var(--ink); background: var(--paper);
+  }
+  .field textarea{ resize: vertical; min-height: 44px; }
+  .form-actions{ display:flex; justify-content:flex-end; gap: 10px; margin-top: 14px; }
+  .btn-secondary{
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+    font-size: 13px; font-weight:600; padding: 8px 16px; border-radius: 999px; cursor:pointer;
+  }
+  .btn-primary{
+    border:none; background: var(--accent); color:#fff; font-size: 13px; font-weight:600;
+    padding: 8px 18px; border-radius: 999px; cursor:pointer;
+  }
+  .btn-danger{ color: var(--rose); border-color: var(--rose-soft); background: var(--rose-soft); }
+
+  .task-list-panel{ background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .task-list-row{
+    display:flex; align-items:flex-start; gap: 13px; padding: 14px 20px; border-bottom: 1px solid var(--line-soft);
+  }
+  .task-list-row:last-child{ border-bottom:none; }
+  .task-list-row .task-body{ flex:1; cursor:pointer; }
+  .task-list-actions{ display:flex; gap: 6px; flex-shrink:0; }
+  .icon-btn{
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink-soft);
+    width: 28px; height: 28px; border-radius: 7px; cursor:pointer; font-size: 12.5px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{ color: var(--ink); border-color: var(--ink-faint); }
+  .icon-btn.danger:hover{ color: var(--rose); border-color: var(--rose); }
+
+  footer.app-footer{ margin-top: 40px; text-align:center; font-size: 11.5px; color: var(--ink-faint); font-family:'IBM Plex Mono', monospace; }
+
+  /* ---------- Connect-to-Google modal ---------- */
+  .modal-backdrop{
+    position: fixed; inset: 0; background: rgba(38,42,39,0.5);
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    display:flex; align-items:center; justify-content:center; z-index: 200;
+    padding: 20px; animation: modalFade .2s ease;
+  }
+  @keyframes modalFade{ from{ opacity:0; } to{ opacity:1; } }
+  .gsi-modal{
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(38,42,39,0.28); max-width: 400px; width: 100%;
+    padding: 34px 30px 26px; text-align:center; animation: modalPop .22s ease;
+  }
+  @keyframes modalPop{ from{ transform: translateY(10px) scale(.97); opacity:0; } to{ transform:none; opacity:1; } }
+  .gsi-modal-icon{ font-size: 34px; line-height:1; margin-bottom: 14px; }
+  .gsi-modal-title{ font-family:'Fraunces', serif; font-weight:500; font-size: 22px; margin: 0 0 8px; color: var(--ink); }
+  .gsi-modal-sub{ font-size: 14px; color: var(--ink-soft); margin: 0 0 22px; line-height: 1.5; }
+  .gsi-btn-wrap{ display:flex; justify-content:center; }
+  .gsi-btn{
+    display:inline-flex; align-items:center; gap: 12px; cursor:pointer;
+    background:#fff; border: 1px solid #747775; border-radius: 8px; height: 44px; padding: 0 20px;
+    font-family:'Roboto','Inter',-apple-system,sans-serif; font-size: 14px; font-weight: 600; color:#1f1f1f;
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .gsi-btn:hover{ background:#f7faff; box-shadow: 0 1px 3px rgba(60,64,67,.25); }
+  .gsi-btn:active{ background:#eef2f9; }
+  .gsi-btn:disabled{ opacity:.55; cursor: default; box-shadow:none; }
+  .gsi-logo{ display:inline-flex; }
+  .gsi-modal-note{ font-size: 12px; color: var(--ink-faint); margin: 18px 0 0; line-height: 1.5; }
+  .gsi-modal-note.setup{
+    background: var(--amber-soft); color: var(--amber); border-radius: 9px; padding: 11px 13px;
+    text-align:left; font-family:'IBM Plex Mono', monospace; font-size: 11.5px; line-height:1.55;
+  }
+  .gsi-dismiss{
+    display:block; margin: 16px auto 0; border:none; background:transparent; color: var(--ink-faint);
+    font-size: 12.5px; font-weight:600; cursor:pointer;
+  }
+  .gsi-dismiss:hover{ color: var(--ink-soft); text-decoration: underline; }
+
+  /* ---------- Mode chooser ---------- */
+  .mode-options{ display:flex; flex-direction:column; gap: 12px; margin-top: 4px; text-align:left; }
+  .mode-card{
+    border: 1px solid var(--line); background: var(--paper); border-radius: 12px; padding: 15px 16px;
+    cursor:pointer; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; width:100%;
+    font-family:'Inter', sans-serif;
+  }
+  .mode-card:hover{ border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow); }
+  .mode-card-title{ font-weight:600; font-size: 15px; color: var(--ink); margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
+  .mode-card-desc{ font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+  .mode-card-tag{ font-family:'IBM Plex Mono', monospace; font-size: 10px; text-transform:uppercase; letter-spacing:0.05em; padding: 2px 7px; border-radius: 999px; }
+  .mode-card-tag.easy{ background: var(--accent-soft); color: var(--accent-deep); }
+  .mode-card-tag.setup{ background: var(--amber-soft); color: var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="modal-backdrop" id="connectModal" style="display:none;">
+  <div class="gsi-modal" role="dialog" aria-modal="true" aria-labelledby="gsiTitle">
+    <div class="gsi-modal-icon">📅</div>
+    <h2 class="gsi-modal-title" id="gsiTitle">Connect your Google Calendar</h2>
+    <p class="gsi-modal-sub" id="gsiSub">Sign in with Google to see your events here and add new ones straight to your calendar.</p>
+    <div class="gsi-btn-wrap">
+      <button type="button" class="gsi-btn" id="gsiBtn">
+        <span class="gsi-logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+        </span>
+        <span id="gsiBtnText">Sign in with Google</span>
+      </button>
+    </div>
+    <p class="gsi-modal-note" id="gsiNote">You'll pick your account in a Google popup. Your events stay in your Google account.</p>
+    <button type="button" class="gsi-dismiss" id="gsiDismiss">Not now — use offline</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modeModal" style="display:none;">
+  <div class="gsi-modal" style="max-width:440px;">
+    <div class="gsi-modal-icon">🗓️</div>
+    <h2 class="gsi-modal-title">How do you want to use the planner?</h2>
+    <p class="gsi-modal-sub">Pick one to start — you can switch anytime from the sync bar.</p>
+    <div class="mode-options">
+      <button type="button" class="mode-card" id="modeSyncBtn">
+        <div class="mode-card-title">🔄 Full two-way sync <span class="mode-card-tag setup">one-time setup</span></div>
+        <div class="mode-card-desc">Your Google Calendar events show up here, and new events sync straight to Google. Needs a quick one-time Google sign-in setup.</div>
+      </button>
+      <button type="button" class="mode-card" id="modeQuickBtn">
+        <div class="mode-card-title">⚡ Quick add <span class="mode-card-tag easy">no setup</span></div>
+        <div class="mode-card-desc">Add events to Google Calendar with one click — they open in Google for you to Save. Works instantly, but events already in Google won't appear here.</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand-block">
+      <p class="eyebrow">Planner</p>
+      <h1 id="headerDate">—</h1>
+      <p class="subdate" id="headerSubdate">—</p>
+    </div>
+    <div class="tabs" id="tabBar">
+      <button class="tab-btn active" data-tab="today">Today</button>
+      <button class="tab-btn" data-tab="week">Week</button>
+      <button class="tab-btn" data-tab="tasks">Tasks</button>
+    </div>
+  </div>
+
+  <form class="quickadd" id="quickAddForm">
+    <span class="qa-icon">＋</span>
+    <input type="text" id="quickAddInput" placeholder="Quick add — e.g. &quot;dinner with Arnold Friday at 7, and finish PSYC reading by Thursday&quot;" autocomplete="off" />
+    <button type="submit" id="quickAddBtn"><span id="quickAddBtnLabel">Add</span></button>
+  </form>
+  <p class="quickadd-hint">Type an event or a to-do — e.g. "dinner Friday at 7" or "finish reading by Thursday". It's sorted into events &amp; tasks for you to approve; approved events are written to Google Calendar.</p>
+  <p class="quickadd-error" id="quickAddError" style="display:none;"></p>
+
+  <div class="sync-bar">
+    <div class="sync-status" id="syncStatus"><span class="sync-dot"></span><span id="syncStatusText">Loading…</span></div>
+    <div style="display:flex; gap:8px;">
+      <button type="button" id="modeBtn"><span id="modeBtnLabel">Switch mode</span></button>
+      <button type="button" id="connectBtn"><span id="connectBtnLabel">Connect Google Calendar</span></button>
+      <button type="button" id="refreshBtn" style="display:none;"><span id="refreshBtnLabel">↻ Refresh calendar</span></button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner" style="display:none;">
+    <span id="errorBannerText"></span>
+    <button id="errorRetryBtn">Retry</button>
+  </div>
+
+  <div class="approval-panel" id="approvalPanel" style="display:none;">
+    <div class="approval-head">
+      <div>
+        <h3>Review before anything is added</h3>
+        <div class="sub" id="approvalSub"></div>
+      </div>
+      <div class="approval-head-actions">
+        <button type="button" class="btn-remove" id="approveCancelAll">Cancel all</button>
+        <button type="button" class="btn-approve" id="approveAllBtn">Approve all</button>
+      </div>
+    </div>
+    <div id="approvalItems"></div>
+  </div>
+
+  <!-- TODAY -->
+  <section class="view active" id="view-today">
+    <div class="today-grid">
+      <div>
+        <div class="panel">
+          <h2 class="section-title">Today's schedule</h2>
+          <div id="todayEvents"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2 class="section-title">Due today <span class="count-badge" id="dueTodayCount">0</span></h2>
+          <div id="todayDue"></div>
+        </div>
+        <div class="panel">
+          <h2 class="section-title">Overdue <span class="count-badge" id="overdueCount">0</span></h2>
+          <div id="todayOverdue"></div>
+        </div>
+        <div class="panel">
+          <h2 class="section-title">Unscheduled <span class="count-badge" id="unscheduledCount">0</span></h2>
+          <div id="todayUnscheduled"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEEK -->
+  <section class="view" id="view-week">
+    <div class="week-header">
+      <div class="week-nav">
+        <button id="weekPrev" aria-label="Previous week">‹</button>
+        <div class="week-label" id="weekLabel">—</div>
+        <span id="weekSyncingIndicator" style="display:none;"><span class="spinner dark"></span></span>
+        <button id="weekNext" aria-label="Next week">›</button>
+      </div>
+      <button class="week-today-btn" id="weekTodayBtn">This week</button>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </section>
+
+  <!-- TASKS -->
+  <section class="view" id="view-tasks">
+    <div class="tasks-toolbar">
+      <div class="filter-pills" id="filterPills">
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="todo">To Do</button>
+        <button class="filter-pill" data-filter="in-progress">In Progress</button>
+        <button class="filter-pill" data-filter="done">Done</button>
+        <button class="filter-pill" data-filter="overdue">Overdue</button>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select class="sort-select" id="sortSelect">
+          <option value="deadline">Sort by deadline</option>
+          <option value="priority">Sort by priority</option>
+          <option value="created">Sort by date added</option>
+        </select>
+        <button class="add-task-btn" id="openAddTaskBtn">＋ Add task</button>
+      </div>
+    </div>
+
+    <div class="task-form" id="taskForm" style="display:none;"></div>
+
+    <div class="task-list-panel">
+      <div id="taskList"></div>
+    </div>
+  </section>
+
+  <footer class="app-footer">personal planner · v3 · live Google Calendar sync</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Config ----------------
+   *
+   * ====== SET UP GOOGLE CALENDAR (one-time) ======
+   * 1. Go to https://console.cloud.google.com/ and create (or pick) a project.
+   * 2. APIs & Services → Library → enable "Google Calendar API".
+   * 3. APIs & Services → Credentials → Create Credentials → OAuth client ID.
+   *      - Application type: "Web application".
+   *      - Authorized JavaScript origins: add the origin you open this page from,
+   *        e.g. http://localhost:8000  (see the note below about serving the file).
+   * 4. Copy the Client ID it gives you and paste it into GOOGLE_CLIENT_ID below.
+   * 5. (Optional) On the OAuth consent screen, add your Google account as a
+   *      "Test user" so you can sign in while the app is unverified.
+   *
+   * IMPORTANT: Google OAuth does NOT work from a file:// URL. You must serve the
+   * file over http. Easiest way, from the folder containing planner.html:
+   *      python -m http.server 8000
+   * then open  http://localhost:8000/planner.html
+   * (Whatever origin you use must match the "Authorized JavaScript origins" above.)
+   */
+  var GOOGLE_CLIENT_ID = "532674958426-vbajgulo5nd4ks4qj6q7v7gio8rtoj2o.apps.googleusercontent.com"; // your OAuth client ID (public — safe to ship)
+  var GOOGLE_API_KEY   = ""; // optional; leave blank if you don't have one
+
+  var GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.events";
+  var GOOGLE_DISCOVERY = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
+  var LOCAL_TZ = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "America/Los_Angeles";
+  var RANGE_FRESH_MS = 90000; // don't re-fetch the same visible range more than once per 90s unless forced
+
+  /* ---------------- Utilities ---------------- */
+  function uid(){ return 'id-' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+  function pad(n){ return n<10 ? '0'+n : ''+n; }
+  function toISODate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function parseISODate(s){
+    var parts = s.split('-'); return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  }
+  function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function startOfWeek(d){
+    var day = d.getDay();
+    var diff = (day === 0) ? -6 : 1 - day;
+    return addDays(new Date(d.getFullYear(), d.getMonth(), d.getDate()), diff);
+  }
+  function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function fmtTime(hhmm){
+    if(!hhmm) return '';
+    var p = hhmm.split(':'); var h = parseInt(p[0]); var m = p[1];
+    var suffix = h>=12 ? 'pm':'am'; var h12 = h%12; if(h12===0) h12=12;
+    return h12 + (m==='00' ? '' : ':'+m) + suffix;
+  }
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function safeParseJson(text){
+    if(!text) return null;
+    var cleaned = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    try { return JSON.parse(cleaned); } catch(e){}
+    var start = -1;
+    for(var i=0;i<cleaned.length;i++){ if(cleaned[i]==='{'||cleaned[i]==='['){ start=i; break; } }
+    var endCurly = cleaned.lastIndexOf('}');
+    var endSquare = cleaned.lastIndexOf(']');
+    var end = Math.max(endCurly, endSquare);
+    if(start!==-1 && end!==-1 && end>start){
+      try { return JSON.parse(cleaned.slice(start, end+1)); } catch(e){}
+    }
+    return null;
+  }
+  var WEEKDAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  var DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  var todayDate = new Date();
+  var todayISO = toISODate(todayDate);
+
+  /* ---------------- State ---------------- */
+  var state = {
+    tasks: [],
+    events: [],
+    rangeCache: {},
+    lastSyncedAt: null,
+    syncing: false,
+    syncError: null,
+    syncErrorRange: null,
+    activeTab: 'today',
+    weekOffset: 0,
+    taskFilter: 'all',
+    taskSort: 'deadline',
+    formOpen: false,
+    editingTaskId: null,
+    pending: [],
+    quickAddBusy: false,
+    quickAddError: null,
+    // Google auth
+    gapiReady: false,
+    gisReady: false,
+    signedIn: false,
+    authError: (GOOGLE_CLIENT_ID ? null : 'setup'),
+    userDismissedConnect: false,
+    mode: null // 'sync' | 'quick' | null (null → show the chooser on load)
+  };
+  var tokenClient = null;
+  var googleInitStarted = false;
+  var attemptingSilent = false;
+
+  /* ---------------- Google Calendar API ---------------- */
+  // Turn "YYYY-MM-DD" + "HH:MM" into an RFC3339 wall-clock string (no offset);
+  // the timeZone field on the event tells Google how to interpret it.
+  function toRFC3339(dateISO, hhmm){ return dateISO + 'T' + (hhmm.length===5 ? hhmm : ('0'+hhmm)) + ':00'; }
+
+  // Map a Google event resource into this app's internal event shape.
+  function mapGoogleEvent(g){
+    var title = g.summary || '(no title)';
+    if(g.start && g.start.date){
+      // All-day event (start.date is YYYY-MM-DD, end.date is exclusive).
+      return { id:g.id, title:title, date:g.start.date, start:null, end:null, allDay:true,
+               location:g.location||null, notes:g.description||null };
+    }
+    var sd = new Date(g.start.dateTime);
+    var ed = g.end && g.end.dateTime ? new Date(g.end.dateTime) : null;
+    return {
+      id: g.id, title: title,
+      date: toISODate(sd),
+      start: pad(sd.getHours()) + ':' + pad(sd.getMinutes()),
+      end: ed ? (pad(ed.getHours()) + ':' + pad(ed.getMinutes())) : null,
+      allDay: false,
+      location: g.location || null,
+      notes: g.description || null
+    };
+  }
+
+  function fetchCalendarEvents(startISO, endISO){
+    if(!state.signedIn) return Promise.reject(new Error("Not connected to Google Calendar."));
+    var timeMin = new Date(parseISODate(startISO).setHours(0,0,0,0)).toISOString();
+    var timeMax = new Date(addDays(parseISODate(endISO),1).setHours(0,0,0,0)).toISOString();
+    return gapi.client.calendar.events.list({
+      calendarId: 'primary',
+      timeMin: timeMin,
+      timeMax: timeMax,
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 250
+    }).then(function(resp){
+      var items = (resp.result && resp.result.items) || [];
+      return items.filter(function(g){ return g.status !== 'cancelled' && g.start; }).map(mapGoogleEvent);
+    }, function(err){
+      var msg = (err && err.result && err.result.error && err.result.error.message) || "Couldn't reach Google Calendar.";
+      throw new Error(msg);
+    });
+  }
+
+  function createCalendarEvent(ev){
+    if(!state.signedIn) return Promise.resolve({ success:false, error:"Connect Google Calendar first." });
+    var resource = {
+      summary: ev.title,
+      start: { dateTime: toRFC3339(ev.date, ev.start), timeZone: LOCAL_TZ },
+      end:   { dateTime: toRFC3339(ev.date, ev.end),   timeZone: LOCAL_TZ }
+    };
+    if(ev.location) resource.location = ev.location;
+    if(ev.notes) resource.description = ev.notes;
+    if(ev.attendees && ev.attendees.length){
+      resource.attendees = ev.attendees.map(function(email){ return { email: email }; });
+    }
+    return gapi.client.calendar.events.insert({ calendarId:'primary', resource: resource })
+      .then(function(resp){
+        return { success:true, eventId: resp.result.id };
+      }, function(err){
+        var msg = (err && err.result && err.result.error && err.result.error.message) || "Couldn't create this event.";
+        return { success:false, error: msg };
+      });
+  }
+
+  // Quick mode: build a Google Calendar "create event" URL. Opening it lands the
+  // user on Google's own prefilled editor where they hit Save. No OAuth needed.
+  function googleCalendarLink(ev){
+    var dcompact = ev.date.replace(/-/g, '');
+    var s = ev.start.replace(':', '') + '00';
+    var e = ev.end.replace(':', '') + '00';
+    var params = [
+      'action=TEMPLATE',
+      'text=' + encodeURIComponent(ev.title),
+      'dates=' + dcompact + 'T' + s + '/' + dcompact + 'T' + e,
+      'ctz=' + encodeURIComponent(LOCAL_TZ)
+    ];
+    if(ev.location) params.push('location=' + encodeURIComponent(ev.location));
+    if(ev.notes) params.push('details=' + encodeURIComponent(ev.notes));
+    return 'https://calendar.google.com/calendar/render?' + params.join('&');
+  }
+
+  /* ---------------- Local quick-add parser (no AI, runs offline) ----------------
+   * Splits a note into calendar EVENTS (something with a time) and TASKS
+   * (a deadline or reminder with no fixed time). Handles today/tomorrow,
+   * weekday names, "next <weekday>", M/D dates, and times like "7", "7pm",
+   * "7:30pm", "19:00", "at 7". Returns a resolved Promise to match the old
+   * async interface so the approval flow is unchanged.
+   */
+  function classifyQuickAdd(text){
+    try {
+      var segments = text.split(/\s*(?:,|;|\band\b)\s*/i).map(function(s){ return s.trim(); }).filter(Boolean);
+      if(segments.length === 0) segments = [text.trim()];
+      var events = [], tasks = [];
+      segments.forEach(function(seg){
+        var item = parseSegment(seg);
+        if(!item) return;
+        if(item.kind === 'event') events.push(item.data); else tasks.push(item.data);
+      });
+      if(events.length === 0 && tasks.length === 0){
+        return Promise.reject(new Error("Couldn't find a task or event in that — try adding a bit more detail."));
+      }
+      return Promise.resolve({ events: events, tasks: tasks });
+    } catch(e){
+      return Promise.reject(new Error("Couldn't parse that — try rephrasing or add it manually."));
+    }
+  }
+
+  var MEAL_WORDS = /\b(dinner|lunch|breakfast|brunch|coffee|drinks?|meal)\b/i;
+  var DATE_WORD_RE = /\b(today|tomorrow|tmrw|tonight)\b/i;
+  var WEEKDAY_RE = /\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b/i;
+  var NUMDATE_RE = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/;
+  var TIME_RE = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\b/i;
+  var WD_INDEX = { sun:0,sunday:0, mon:1,monday:1, tue:2,tues:2,tuesday:2, wed:3,wednesday:3, thu:4,thur:4,thurs:4,thursday:4, fri:5,friday:5, sat:6,saturday:6 };
+
+  function nextWeekday(targetDow, forceNext){
+    var base = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    var cur = base.getDay();
+    var delta = (targetDow - cur + 7) % 7;
+    if(forceNext) delta = delta === 0 ? 7 : delta + 7; // "next monday" = the one after this coming
+    else if(delta === 0) delta = 0; // today counts
+    return addDays(base, delta);
+  }
+
+  function parseSegment(seg){
+    var working = seg;
+    var dateISO = null, timeHHMM = null, hadTimeWord = false;
+
+    // ----- date -----
+    var mWord = working.match(DATE_WORD_RE);
+    if(mWord){
+      var w = mWord[1].toLowerCase();
+      dateISO = (w === 'tomorrow' || w === 'tmrw') ? toISODate(addDays(todayDate,1)) : todayISO;
+      if(w === 'tonight') hadTimeWord = true; // implies evening
+      working = working.replace(mWord[0], ' ');
+    }
+    if(!dateISO){
+      var mWd = working.match(WEEKDAY_RE);
+      if(mWd){
+        var key = mWd[2].toLowerCase();
+        var dow = WD_INDEX[key];
+        if(dow != null){ dateISO = toISODate(nextWeekday(dow, !!mWd[1])); working = working.replace(mWd[0], ' '); }
+      }
+    }
+    if(!dateISO){
+      var mNum = working.match(NUMDATE_RE);
+      if(mNum){
+        var mo = parseInt(mNum[1],10)-1, da = parseInt(mNum[2],10);
+        var yr = mNum[3] ? parseInt(mNum[3].length===2 ? '20'+mNum[3] : mNum[3],10) : todayDate.getFullYear();
+        var cand = new Date(yr, mo, da);
+        if(!mNum[3] && cand < new Date(todayDate.getFullYear(),todayDate.getMonth(),todayDate.getDate())) cand = new Date(yr+1, mo, da);
+        dateISO = toISODate(cand);
+        working = working.replace(mNum[0], ' ');
+      }
+    }
+
+    // ----- time ----- (skip a bare number that's really part of the date already removed)
+    var mTime = working.match(TIME_RE);
+    if(mTime){
+      var hr = parseInt(mTime[1],10);
+      var min = mTime[2] ? parseInt(mTime[2],10) : 0;
+      var mer = mTime[3] ? mTime[3].toLowerCase().replace(/\./g,'') : null;
+      if(hr >= 0 && hr <= 23 && min >= 0 && min <= 59){
+        if(mer === 'pm' && hr < 12) hr += 12;
+        else if(mer === 'am' && hr === 12) hr = 0;
+        else if(!mer){
+          // No am/pm: assume 1–7 is evening (pm), 8–11 morning (am), noon/others as-is.
+          if(hr >= 1 && hr <= 7) hr += 12;
+        }
+        timeHHMM = pad(hr) + ':' + pad(min);
+        working = working.replace(mTime[0], ' ');
+        hadTimeWord = true;
+      }
+    }
+
+    // Clean up the leftover text into a title.
+    var title = working.replace(/\b(on|by|due|before|at|the|this|coming)\b/gi, ' ')
+                       .replace(/\s+/g, ' ').trim();
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+    if(!title) title = seg.trim();
+
+    var wantsTaskWord = /\b(by|due|deadline|submit|finish|turn in|pay|call|email|buy|remember|remind)\b/i.test(seg);
+
+    if(timeHHMM){
+      // It's a timed calendar event.
+      var durMin = MEAL_WORDS.test(seg) ? 90 : 60;
+      var startParts = timeHHMM.split(':');
+      var endDate = new Date(2000,0,1, parseInt(startParts[0],10), parseInt(startParts[1],10));
+      endDate.setMinutes(endDate.getMinutes() + durMin);
+      var endHHMM = pad(endDate.getHours()) + ':' + pad(endDate.getMinutes());
+      return { kind:'event', data:{
+        title: title, date: dateISO || todayISO, start: timeHHMM, end: endHHMM,
+        durationSuggested: true, location:null, notes:null, attendees:[]
+      }};
+    }
+    // No time → a task (with a due date if we found one).
+    return { kind:'task', data:{ name: title, dueDate: dateISO || null, dueTime: null, notes: null } };
+  }
+
+  /* ---------------- Local storage (tasks + event cache; events are authoritative from Google) ---------------- */
+  function safeGet(key){ try { return localStorage.getItem(key); } catch(e){ return null; } }
+  function safeSet(key, val){ try { localStorage.setItem(key, val); } catch(e){ console.error('localStorage write failed', e); } }
+
+  function loadAll(){
+    var savedMode = safeGet('planner-mode');
+    if(savedMode === 'sync' || savedMode === 'quick') state.mode = savedMode;
+    var tasksRaw = safeGet('planner-tasks-v1');
+    state.tasks = tasksRaw ? (function(){ try { return JSON.parse(tasksRaw); } catch(e){ return []; } })() : [];
+    var cacheRaw = safeGet('planner-events-cache-v2');
+    if(cacheRaw){
+      try {
+        var cache = JSON.parse(cacheRaw);
+        state.events = cache.events || [];
+        state.lastSyncedAt = cache.syncedAt ? new Date(cache.syncedAt) : null;
+      } catch(e){}
+    }
+    render();
+  }
+  function saveTasks(){ safeSet('planner-tasks-v1', JSON.stringify(state.tasks)); }
+  function persistEventCache(){
+    safeSet('planner-events-cache-v2', JSON.stringify({ events: state.events, syncedAt: state.lastSyncedAt ? state.lastSyncedAt.toISOString() : null }));
+  }
+
+  /* ---------------- Live calendar sync ---------------- */
+  function ensureRange(startISO, endISO, force){
+    if(!state.signedIn) return Promise.resolve(); // nothing to sync until connected
+    var key = startISO + '_' + endISO;
+    var cached = state.rangeCache[key];
+    if(!force && cached && (Date.now() - cached.fetchedAt < RANGE_FRESH_MS)) return Promise.resolve();
+    state.syncing = true; state.syncError = null; renderSyncBar();
+    return fetchCalendarEvents(startISO, endISO).then(function(events){
+      state.events = state.events.filter(function(e){ return e.date < startISO || e.date > endISO; });
+      events.forEach(function(e){ state.events.push(e); });
+      state.rangeCache[key] = { fetchedAt: Date.now() };
+      state.lastSyncedAt = new Date();
+      state.syncError = null;
+      state.syncErrorRange = null;
+      persistEventCache();
+    }).catch(function(err){
+      state.syncError = err.message || "Couldn't reach Google Calendar.";
+      state.syncErrorRange = [startISO, endISO];
+    }).then(function(){
+      state.syncing = false;
+      render();
+    });
+  }
+  function formatRangeLabel(startISO, endISO){
+    var s = parseISODate(startISO), e = parseISODate(endISO);
+    if(startISO === endISO) return s.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+    var sameYear = s.getFullYear() === e.getFullYear();
+    return s.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' – ' + e.toLocaleDateString(undefined, {month:'short', day:'numeric', year: sameYear ? undefined : 'numeric'}) + ', ' + e.getFullYear();
+  }
+  function visibleRangeForActiveTab(){
+    if(state.activeTab === 'today') return [todayISO, todayISO];
+    if(state.activeTab === 'week'){ var m = currentWeekMonday(); return [toISODate(m), toISODate(addDays(m,6))]; }
+    var m2 = currentWeekMonday(); return [toISODate(m2), toISODate(addDays(m2,6))];
+  }
+
+  /* ---------------- Task helpers ---------------- */
+  function isOverdue(t){ return t.dueDate && t.dueDate < todayISO && t.status !== 'done'; }
+  function isDueOn(t, iso){ return t.dueDate === iso; }
+  function priorityRank(p){ return p==='high'?0:p==='medium'?1:2; }
+  function statusLabel(s){ return s==='in-progress' ? 'In Progress' : s==='done' ? 'Done' : 'To Do'; }
+  function eventsOn(iso){
+    return state.events.filter(function(e){ return e.date === iso; }).sort(function(a,b){
+      if(a.allDay && !b.allDay) return -1;
+      if(!a.allDay && b.allDay) return 1;
+      return (a.start||'').localeCompare(b.start||'');
+    });
+  }
+
+  /* ---------------- Rendering: header + sync bar ---------------- */
+  function renderHeader(){
+    var d = todayDate;
+    var weekday = d.toLocaleDateString(undefined, {weekday:'long'});
+    var monthDay = d.toLocaleDateString(undefined, {month:'long', day:'numeric'});
+    document.getElementById('headerDate').textContent = weekday + ', ' + monthDay;
+    document.getElementById('headerSubdate').textContent = d.getFullYear() + ' · week ' + getISOWeekNumber(d);
+  }
+  function getISOWeekNumber(d){
+    var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var dayNum = (date.getUTCDay() + 6) % 7;
+    date.setUTCDate(date.getUTCDate() - dayNum + 3);
+    var firstThursday = new Date(Date.UTC(date.getUTCFullYear(),0,4));
+    var diff = date - firstThursday;
+    return 1 + Math.round(diff / (7*24*3600*1000));
+  }
+  function renderSyncBar(){
+    updateConnectModal();
+    var dot = document.querySelector('#syncStatus .sync-dot');
+    var text = document.getElementById('syncStatusText');
+    var refreshLabel = document.getElementById('refreshBtnLabel');
+    var refreshBtn = document.getElementById('refreshBtn');
+    var connectBtn = document.getElementById('connectBtn');
+    var connectLabel = document.getElementById('connectBtnLabel');
+    var errorBanner = document.getElementById('errorBanner');
+    var modeBtn = document.getElementById('modeBtn');
+    var modeLabel = document.getElementById('modeBtnLabel');
+
+    // The "switch mode" button is available once a mode has been chosen.
+    modeBtn.style.display = state.mode ? 'inline-flex' : 'none';
+    if(state.mode) modeLabel.textContent = (state.mode === 'quick') ? 'Switch to full sync' : 'Switch to quick add';
+
+    // ----- Quick mode: no Google connection at all -----
+    if(state.mode === 'quick'){
+      dot.className = 'sync-dot';
+      text.textContent = 'Quick mode · new events open in Google Calendar for you to Save';
+      connectBtn.style.display = 'none';
+      refreshBtn.style.display = 'none';
+      errorBanner.style.display = 'none';
+      return;
+    }
+
+    // ----- Sync mode -----
+    // Connection-level states take priority over per-range sync states.
+    if(state.authError === 'setup'){
+      dot.className = 'sync-dot error';
+      text.textContent = 'Add your Google OAuth Client ID in the file to enable sync (see GOOGLE_CLIENT_ID in the code).';
+      connectBtn.style.display = 'none';
+      refreshBtn.style.display = 'none';
+      errorBanner.style.display = 'none';
+      return;
+    }
+    if(!state.signedIn){
+      if(attemptingSilent){
+        dot.className = 'sync-dot';
+        text.innerHTML = '<span class="spinner dark"></span> Reconnecting to Google Calendar…';
+        connectBtn.style.display = 'none';
+        refreshBtn.style.display = 'none';
+        errorBanner.style.display = 'none';
+        return;
+      }
+      dot.className = 'sync-dot error';
+      text.textContent = state.authError ? state.authError : 'Not connected to Google Calendar.';
+      connectBtn.style.display = 'inline-flex';
+      connectLabel.textContent = (state.gapiReady && state.gisReady) ? 'Connect Google Calendar' : 'Loading Google…';
+      connectBtn.disabled = !(state.gapiReady && state.gisReady);
+      refreshBtn.style.display = 'none';
+      errorBanner.style.display = 'none';
+      return;
+    }
+
+    // Signed in.
+    connectBtn.style.display = 'inline-flex';
+    connectBtn.disabled = false;
+    connectLabel.textContent = 'Disconnect';
+    refreshBtn.style.display = 'inline-flex';
+
+    if(state.syncing){
+      dot.className = 'sync-dot';
+      text.innerHTML = '<span class="spinner dark"></span> Syncing with Google Calendar…';
+      refreshLabel.textContent = 'Syncing…';
+    } else if(state.syncError){
+      dot.className = 'sync-dot error';
+      text.textContent = state.lastSyncedAt ? ('Live sync failed · showing last successful sync from ' + state.lastSyncedAt.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})) : 'Live sync failed';
+      refreshLabel.textContent = '↻ Refresh calendar';
+    } else {
+      dot.className = 'sync-dot';
+      text.textContent = state.lastSyncedAt ? ('Synced with Google Calendar at ' + state.lastSyncedAt.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})) : 'Connected — no sync yet';
+      refreshLabel.textContent = '↻ Refresh calendar';
+    }
+
+    if(state.syncError){
+      errorBanner.style.display = 'flex';
+      var rangeNote = state.syncErrorRange ? (' Couldn\'t retrieve events for ' + formatRangeLabel(state.syncErrorRange[0], state.syncErrorRange[1]) + ' — this period is not shown below, it is not empty.') : '';
+      document.getElementById('errorBannerText').textContent = state.syncError + rangeNote;
+    } else {
+      errorBanner.style.display = 'none';
+    }
+  }
+
+  /* ---------------- Rendering: Today ---------------- */
+  function renderToday(){
+    var evs = eventsOn(todayISO);
+    var evHtml = evs.length ? evs.map(function(e){
+      return '<div class="event-row">'
+        + '<div class="event-time' + (e.allDay?' allday':'') + '">' + (e.allDay ? 'All day' : fmtTime(e.start)) + '</div>'
+        + '<div><div class="event-title">' + escapeHtml(e.title) + '</div>'
+        + (e.location || e.notes ? '<div class="event-meta">' + escapeHtml(e.location || e.notes) + '</div>' : '')
+        + '</div></div>';
+    }).join('') : '<p class="empty-state">Nothing on the calendar today.</p>';
+    document.getElementById('todayEvents').innerHTML = evHtml;
+
+    var due = state.tasks.filter(function(t){ return isDueOn(t, todayISO); }).sort(function(a,b){ return priorityRank(a.priority)-priorityRank(b.priority); });
+    document.getElementById('dueTodayCount').textContent = due.length;
+    document.getElementById('todayDue').innerHTML = due.length ? due.map(taskRowHtml).join('') : '<p class="empty-state">No tasks due today.</p>';
+
+    var overdue = state.tasks.filter(isOverdue).sort(function(a,b){ return a.dueDate.localeCompare(b.dueDate); });
+    document.getElementById('overdueCount').textContent = overdue.length;
+    document.getElementById('todayOverdue').innerHTML = overdue.length ? overdue.map(taskRowHtml).join('') : '<p class="empty-state">Nothing overdue. Clean slate.</p>';
+
+    var unscheduled = state.tasks.filter(function(t){ return !t.dueDate && t.status !== 'done'; });
+    document.getElementById('unscheduledCount').textContent = unscheduled.length;
+    document.getElementById('todayUnscheduled').innerHTML = unscheduled.length ? unscheduled.map(taskRowHtml).join('') : '<p class="empty-state">Nothing waiting to be scheduled.</p>';
+
+    bindTaskRowEvents();
+  }
+
+  function taskRowHtml(t){
+    var overdue = isOverdue(t);
+    var subParts = [];
+    if(t.dueDate) subParts.push('<span class="pill ' + (overdue?'overdue':t.priority) + '">' + (overdue ? 'Overdue' : formatDueLabel(t)) + '</span>');
+    subParts.push('<span class="pill ' + t.priority + '">' + t.priority + '</span>');
+    return '<div class="task-row' + (t.status==='done'?' is-done':'') + '" data-id="' + t.id + '">'
+      + '<div class="task-check' + (t.status==='done'?' done':'') + '" data-action="toggle" data-id="' + t.id + '">' + (t.status==='done'?'✓':'') + '</div>'
+      + '<div class="task-body" data-action="edit" data-id="' + t.id + '">'
+      + '<div class="task-name">' + escapeHtml(t.name) + '</div>'
+      + '<div class="task-sub">' + subParts.join('') + '</div>'
+      + '</div></div>';
+  }
+  function formatDueLabel(t){
+    if(!t.dueDate) return 'Unscheduled';
+    var d = parseISODate(t.dueDate);
+    var label = d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+    return t.dueTime ? label + ' · ' + fmtTime(t.dueTime) : label;
+  }
+  function bindTaskRowEvents(){
+    document.querySelectorAll('[data-action="toggle"]').forEach(function(el){
+      el.onclick = function(ev){ ev.stopPropagation(); toggleTaskStatus(el.getAttribute('data-id')); };
+    });
+    document.querySelectorAll('[data-action="edit"]').forEach(function(el){
+      el.onclick = function(){ openTaskForm(el.getAttribute('data-id')); switchTab('tasks'); };
+    });
+  }
+  function toggleTaskStatus(id){
+    var t = state.tasks.find(function(x){ return x.id===id; });
+    if(!t) return;
+    t.status = t.status === 'done' ? 'todo' : 'done';
+    saveTasks(); render();
+  }
+
+  /* ---------------- Rendering: Week ---------------- */
+  function currentWeekMonday(){ return addDays(startOfWeek(todayDate), state.weekOffset*7); }
+  function renderWeek(){
+    var monday = currentWeekMonday();
+    var sunday = addDays(monday,6);
+    var label = monday.toLocaleDateString(undefined,{month:'short', day:'numeric'}) + ' – ' + sunday.toLocaleDateString(undefined,{month:'short', day:'numeric'}) + ', ' + sunday.getFullYear();
+    document.getElementById('weekLabel').textContent = label;
+    document.getElementById('weekSyncingIndicator').style.display = state.syncing ? 'inline-flex' : 'none';
+
+    var html = '';
+    for(var i=0;i<7;i++){
+      var d = addDays(monday,i);
+      var iso = toISODate(d);
+      var isToday = isSameDay(d, todayDate);
+      var evs = eventsOn(iso);
+      var dayTasks = state.tasks.filter(function(t){ return t.dueDate === iso; });
+
+      var evHtml = evs.length ? evs.map(function(e){
+        return '<div class="day-event"><div class="day-event-time' + (e.allDay?' allday':'') + '">' + (e.allDay?'All day':fmtTime(e.start)) + '</div><div class="day-event-title">' + escapeHtml(e.title) + '</div></div>';
+      }).join('') : '<div class="day-empty">No events</div>';
+
+      var taskHtml = dayTasks.length ? '<div class="day-tasks">' + dayTasks.map(function(t){
+        var color = t.priority==='high' ? 'var(--rose)' : t.priority==='medium' ? 'var(--amber)' : 'var(--slate)';
+        return '<div class="day-task-chip' + (t.status==='done'?' is-done':'') + '" data-action="edit" data-id="' + t.id + '"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(t.name) + '</div>';
+      }).join('') + '</div>' : '';
+
+      html += '<div class="day-col' + (isToday?' is-today':'') + '">'
+        + '<div class="day-col-head"><div class="day-name">' + DAY_LABELS[i] + '</div><div class="day-num">' + d.getDate() + '</div></div>'
+        + '<div class="day-col-body">' + evHtml + taskHtml + '</div></div>';
+    }
+    document.getElementById('weekGrid').innerHTML = html;
+    document.querySelectorAll('#weekGrid [data-action="edit"]').forEach(function(el){
+      el.onclick = function(){ openTaskForm(el.getAttribute('data-id')); switchTab('tasks'); };
+    });
+  }
+
+  /* ---------------- Rendering: Tasks ---------------- */
+  function filteredSortedTasks(){
+    var list = state.tasks.slice();
+    if(state.taskFilter === 'todo') list = list.filter(function(t){ return t.status==='todo'; });
+    else if(state.taskFilter === 'in-progress') list = list.filter(function(t){ return t.status==='in-progress'; });
+    else if(state.taskFilter === 'done') list = list.filter(function(t){ return t.status==='done'; });
+    else if(state.taskFilter === 'overdue') list = list.filter(isOverdue);
+
+    if(state.taskSort === 'deadline'){
+      list.sort(function(a,b){
+        if(!a.dueDate && !b.dueDate) return 0;
+        if(!a.dueDate) return 1;
+        if(!b.dueDate) return -1;
+        return (a.dueDate+ (a.dueTime||'')).localeCompare(b.dueDate + (b.dueTime||''));
+      });
+    } else if(state.taskSort === 'priority'){
+      list.sort(function(a,b){ return priorityRank(a.priority)-priorityRank(b.priority); });
+    } else {
+      list.sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+    }
+    return list;
+  }
+  function renderTasks(){
+    var list = filteredSortedTasks();
+    document.getElementById('taskList').innerHTML = list.length ? list.map(function(t){
+      var overdue = isOverdue(t);
+      return '<div class="task-list-row">'
+        + '<div class="task-check' + (t.status==='done'?' done':'') + '" data-action="toggle" data-id="' + t.id + '">' + (t.status==='done'?'✓':'') + '</div>'
+        + '<div class="task-body" data-action="edit" data-id="' + t.id + '">'
+        + '<div class="task-name" style="' + (t.status==='done'?'color:var(--ink-faint);text-decoration:line-through;':'') + '">' + escapeHtml(t.name) + '</div>'
+        + '<div class="task-sub">'
+        + '<span class="pill ' + (overdue?'overdue':t.priority) + '">' + (overdue?'Overdue':t.priority) + '</span>'
+        + '<span>' + formatDueLabel(t) + '</span>'
+        + '<span>' + statusLabel(t.status) + '</span>'
+        + (t.notes ? '<span>· ' + escapeHtml(t.notes) + '</span>' : '')
+        + '</div></div>'
+        + '<div class="task-list-actions">'
+        + '<button class="icon-btn" data-action="edit" data-id="' + t.id + '" title="Edit">✎</button>'
+        + '<button class="icon-btn danger" data-action="delete" data-id="' + t.id + '" title="Delete">🗑</button>'
+        + '</div></div>';
+    }).join('') : '<p class="empty-state" style="padding:20px;">No tasks here. Add one above.</p>';
+
+    document.querySelectorAll('#taskList [data-action="toggle"]').forEach(function(el){ el.onclick = function(){ toggleTaskStatus(el.getAttribute('data-id')); }; });
+    document.querySelectorAll('#taskList [data-action="edit"]').forEach(function(el){ el.onclick = function(){ openTaskForm(el.getAttribute('data-id')); }; });
+    document.querySelectorAll('#taskList [data-action="delete"]').forEach(function(el){ el.onclick = function(){ deleteTask(el.getAttribute('data-id')); }; });
+  }
+  function deleteTask(id){
+    state.tasks = state.tasks.filter(function(t){ return t.id !== id; });
+    saveTasks(); render();
+  }
+
+  /* ---------------- Manual task form (unchanged from v1) ---------------- */
+  function openTaskForm(id){
+    state.editingTaskId = id || null;
+    state.formOpen = true;
+    renderTaskForm();
+  }
+  function closeTaskForm(){
+    state.formOpen = false; state.editingTaskId = null;
+    document.getElementById('taskForm').style.display = 'none';
+  }
+  function renderTaskForm(){
+    var form = document.getElementById('taskForm');
+    if(!state.formOpen){ form.style.display='none'; return; }
+    var t = state.editingTaskId ? state.tasks.find(function(x){ return x.id===state.editingTaskId; }) : null;
+    var isEdit = !!t;
+    var v = t || { name:'', dueDate:'', dueTime:'', priority:'medium', status:'todo', notes:'' };
+
+    form.innerHTML =
+      '<div class="form-grid">'
+      + '<div class="field"><label>Task name</label><input type="text" id="f-name" value="' + escapeHtml(v.name) + '" placeholder="What needs doing?"/></div>'
+      + '<div class="field"><label>Due date</label><input type="date" id="f-date" value="' + (v.dueDate||'') + '"/></div>'
+      + '<div class="field"><label>Due time</label><input type="time" id="f-time" value="' + (v.dueTime||'') + '"/></div>'
+      + '<div class="field"><label>Priority</label><select id="f-priority">'
+      +   '<option value="low"' + (v.priority==='low'?' selected':'') + '>Low</option>'
+      +   '<option value="medium"' + (v.priority==='medium'?' selected':'') + '>Medium</option>'
+      +   '<option value="high"' + (v.priority==='high'?' selected':'') + '>High</option>'
+      + '</select></div>'
+      + '<div class="field"><label>Status</label><select id="f-status">'
+      +   '<option value="todo"' + (v.status==='todo'?' selected':'') + '>To Do</option>'
+      +   '<option value="in-progress"' + (v.status==='in-progress'?' selected':'') + '>In Progress</option>'
+      +   '<option value="done"' + (v.status==='done'?' selected':'') + '>Done</option>'
+      + '</select></div>'
+      + '<div class="field" style="grid-column: span 3;"><label>Notes</label><textarea id="f-notes" placeholder="Optional">' + escapeHtml(v.notes) + '</textarea></div>'
+      + '</div>'
+      + '<div class="form-actions">'
+      + (isEdit ? '<button type="button" class="btn-secondary btn-danger" id="f-delete">Delete</button>' : '')
+      + '<button type="button" class="btn-secondary" id="f-cancel">Cancel</button>'
+      + '<button type="button" class="btn-primary" id="f-save">' + (isEdit?'Save changes':'Add task') + '</button>'
+      + '</div>';
+
+    form.style.display = 'block';
+    document.getElementById('f-cancel').onclick = closeTaskForm;
+    document.getElementById('f-save').onclick = function(){ saveTaskForm(isEdit ? v.id : null); };
+    if(isEdit) document.getElementById('f-delete').onclick = function(){ deleteTask(v.id); closeTaskForm(); };
+    document.getElementById('f-name').focus();
+  }
+  function saveTaskForm(existingId){
+    var name = document.getElementById('f-name').value.trim();
+    if(!name) return;
+    var data = {
+      name: name,
+      dueDate: document.getElementById('f-date').value || null,
+      dueTime: document.getElementById('f-time').value || null,
+      priority: document.getElementById('f-priority').value,
+      status: document.getElementById('f-status').value,
+      notes: document.getElementById('f-notes').value.trim()
+    };
+    if(existingId){
+      var t = state.tasks.find(function(x){ return x.id===existingId; });
+      Object.assign(t, data);
+    } else {
+      data.id = uid();
+      data.createdAt = new Date().toISOString();
+      state.tasks.push(data);
+    }
+    saveTasks();
+    closeTaskForm();
+    render();
+  }
+
+  /* ---------------- Quick Add → classify → approval ---------------- */
+  document.getElementById('quickAddForm').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    if(state.quickAddBusy) return;
+    var input = document.getElementById('quickAddInput');
+    var text = input.value.trim();
+    if(!text) return;
+
+    state.quickAddBusy = true; state.quickAddError = null;
+    setQuickAddBusyUI(true);
+
+    classifyQuickAdd(text).then(function(result){
+      var newItems = [];
+      (result.events||[]).forEach(function(e){
+        newItems.push({ clientId: uid(), kind:'event', title:e.title||'', date:e.date||todayISO, start:e.start||'', end:e.end||'', durationSuggested: !!e.durationSuggested, location:e.location||'', notes:e.notes||'', attendees:e.attendees||[], status:'idle', errorMsg:null });
+      });
+      (result.tasks||[]).forEach(function(t){
+        newItems.push({ clientId: uid(), kind:'task', name:t.name||'', dueDate:t.dueDate||null, dueTime:t.dueTime||null, notes:t.notes||'', status:'idle', errorMsg:null });
+      });
+      if(newItems.length === 0){
+        state.quickAddError = "Didn't find a task or event in that — try adding more detail.";
+      } else {
+        state.pending = state.pending.concat(newItems);
+        input.value = '';
+      }
+    }).catch(function(err){
+      state.quickAddError = err.message || "Something went wrong reading that.";
+    }).then(function(){
+      state.quickAddBusy = false;
+      setQuickAddBusyUI(false);
+      renderApprovalPanel();
+      renderQuickAddError();
+    });
+  });
+
+  function setQuickAddBusyUI(busy){
+    document.getElementById('quickAddBtn').disabled = busy;
+    document.getElementById('quickAddBtnLabel').innerHTML = busy ? '<span class="spinner"></span> Thinking' : 'Add';
+  }
+  function renderQuickAddError(){
+    var el = document.getElementById('quickAddError');
+    if(state.quickAddError){ el.style.display = 'block'; el.textContent = state.quickAddError; }
+    else { el.style.display = 'none'; }
+  }
+
+  function renderApprovalPanel(){
+    var panel = document.getElementById('approvalPanel');
+    if(state.pending.length === 0){ panel.style.display = 'none'; document.getElementById('approvalItems').innerHTML = ''; return; }
+    panel.style.display = 'block';
+
+    var evCount = state.pending.filter(function(p){ return p.kind==='event'; }).length;
+    var taskCount = state.pending.filter(function(p){ return p.kind==='task'; }).length;
+    document.getElementById('approvalSub').textContent = evCount + (evCount===1?' event':' events') + ' · ' + taskCount + (taskCount===1?' task':' tasks') + ' proposed — nothing is saved until you approve';
+
+    document.getElementById('approvalItems').innerHTML = state.pending.map(renderApprovalItem).join('');
+    bindApprovalItemEvents();
+
+    document.getElementById('approveAllBtn').onclick = function(){ approveAll(); };
+    document.getElementById('approveCancelAll').onclick = function(){ state.pending = []; renderApprovalPanel(); };
+  }
+
+  function renderApprovalItem(p){
+    if(p.kind === 'event'){
+      return '<div class="approval-item" data-client-id="' + p.clientId + '">'
+        + '<div class="approval-item-type">Calendar event' + (p.durationSuggested ? ' <span class="badge-suggested">end time suggested</span>' : '') + '</div>'
+        + '<div class="approval-fields">'
+        + '<div class="full"><label>Title</label><input type="text" data-f="title" value="' + escapeHtml(p.title) + '"/></div>'
+        + '<div><label>Date</label><input type="date" data-f="date" value="' + (p.date||'') + '"/></div>'
+        + '<div><label>Start</label><input type="time" data-f="start" value="' + (p.start||'') + '"/></div>'
+        + '<div><label>End</label><input type="time" data-f="end" value="' + (p.end||'') + '"/></div>'
+        + '<div class="full"><label>Location</label><input type="text" data-f="location" value="' + escapeHtml(p.location) + '" placeholder="Optional"/></div>'
+        + '<div class="full"><label>Notes</label><textarea data-f="notes" placeholder="Optional">' + escapeHtml(p.notes) + '</textarea></div>'
+        + '</div>'
+        + '<div class="approval-item-footer">'
+        + '<div class="approval-item-status">' + (p.status==='error' ? escapeHtml(p.errorMsg||'') : '') + '</div>'
+        + '<div class="approval-item-actions">'
+        + '<button type="button" class="btn-remove" data-action="remove" data-client-id="' + p.clientId + '">Remove</button>'
+        + '<button type="button" class="btn-approve" data-action="approve" data-client-id="' + p.clientId + '"' + (p.status==='saving'?' disabled':'') + '>' + (p.status==='saving' ? '<span class="spinner"></span> Adding…' : (state.mode==='quick' ? 'Add to Google Calendar' : 'Add to calendar')) + '</button>'
+        + '</div></div></div>';
+    }
+    return '<div class="approval-item" data-client-id="' + p.clientId + '">'
+      + '<div class="approval-item-type task">Task</div>'
+      + '<div class="approval-fields task-fields">'
+      + '<div class="full"><label>Task name</label><input type="text" data-f="name" value="' + escapeHtml(p.name) + '"/></div>'
+      + '<div><label>Due date</label><input type="date" data-f="dueDate" value="' + (p.dueDate||'') + '"/></div>'
+      + '<div><label>Due time</label><input type="time" data-f="dueTime" value="' + (p.dueTime||'') + '"/></div>'
+      + '<div class="full"><label>Notes</label><textarea data-f="notes" placeholder="Optional">' + escapeHtml(p.notes) + '</textarea></div>'
+      + '</div>'
+      + '<div class="approval-item-footer">'
+      + '<div class="approval-item-status"></div>'
+      + '<div class="approval-item-actions">'
+      + '<button type="button" class="btn-remove" data-action="remove" data-client-id="' + p.clientId + '">Remove</button>'
+      + '<button type="button" class="btn-approve" data-action="approve" data-client-id="' + p.clientId + '">Add to tasks</button>'
+      + '</div></div></div>';
+  }
+
+  function readItemFields(clientId){
+    var el = document.querySelector('.approval-item[data-client-id="' + clientId + '"]');
+    var fields = {};
+    el.querySelectorAll('[data-f]').forEach(function(input){ fields[input.getAttribute('data-f')] = input.value; });
+    return fields;
+  }
+
+  function bindApprovalItemEvents(){
+    document.querySelectorAll('[data-action="remove"]').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute('data-client-id');
+        state.pending = state.pending.filter(function(p){ return p.clientId !== id; });
+        renderApprovalPanel();
+      };
+    });
+    document.querySelectorAll('[data-action="approve"]').forEach(function(btn){
+      btn.onclick = function(){ approveItem(btn.getAttribute('data-client-id')); };
+    });
+  }
+
+  function approveItem(clientId){
+    var p = state.pending.find(function(x){ return x.clientId === clientId; });
+    if(!p) return Promise.resolve();
+    var fields = readItemFields(clientId);
+    Object.assign(p, fields);
+
+    if(p.kind === 'task'){
+      if(!p.name || !p.name.trim()){ p.status='error'; p.errorMsg='Task needs a name.'; renderApprovalPanel(); return Promise.resolve(); }
+      state.tasks.push({ id: uid(), name: p.name.trim(), dueDate: p.dueDate || null, dueTime: p.dueTime || null, priority:'medium', status:'todo', notes: p.notes || '', createdAt: new Date().toISOString() });
+      saveTasks();
+      state.pending = state.pending.filter(function(x){ return x.clientId !== clientId; });
+      renderApprovalPanel();
+      render();
+      return Promise.resolve();
+    }
+
+    if(!p.title || !p.date || !p.start || !p.end){ p.status='error'; p.errorMsg='Title, date, start and end are needed.'; renderApprovalPanel(); return Promise.resolve(); }
+
+    if(state.mode === 'quick'){
+      // Open Google's prefilled create-event page, and keep a local copy so it shows here too.
+      try { window.open(googleCalendarLink(p), '_blank', 'noopener'); } catch(e){}
+      state.events.push({ id: uid(), title: p.title, date: p.date, start: p.start, end: p.end, allDay:false, location: p.location||null, notes: p.notes||null, _local:true });
+      persistEventCache();
+      state.pending = state.pending.filter(function(x){ return x.clientId !== clientId; });
+      renderApprovalPanel();
+      render();
+      return Promise.resolve();
+    }
+
+    p.status = 'saving'; p.errorMsg = null; renderApprovalPanel();
+    return createCalendarEvent(p).then(function(res){
+      if(res.success){
+        state.pending = state.pending.filter(function(x){ return x.clientId !== clientId; });
+        renderApprovalPanel();
+        var range = visibleRangeForActiveTab();
+        return ensureRange(range[0], range[1], true);
+      } else {
+        p.status = 'error'; p.errorMsg = res.error || "Couldn't create this event.";
+        renderApprovalPanel();
+      }
+    }).catch(function(err){
+      p.status = 'error'; p.errorMsg = err.message || "Couldn't create this event.";
+      renderApprovalPanel();
+    });
+  }
+
+  function approveAll(){
+    var ids = state.pending.map(function(p){ return p.clientId; });
+    var chain = Promise.resolve();
+    ids.forEach(function(id){
+      chain = chain.then(function(){
+        if(state.pending.find(function(p){ return p.clientId===id; })){ return approveItem(id); }
+      });
+    });
+    return chain;
+  }
+
+  /* ---------------- Tabs / nav ---------------- */
+  function switchTab(tab){
+    state.activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab')===tab); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+    document.getElementById('view-' + tab).classList.add('active');
+    var range = visibleRangeForActiveTab();
+    ensureRange(range[0], range[1], false);
+    render();
+  }
+  document.getElementById('tabBar').addEventListener('click', function(ev){
+    var btn = ev.target.closest('.tab-btn');
+    if(btn) switchTab(btn.getAttribute('data-tab'));
+  });
+
+  document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+  document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+  document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+
+  document.getElementById('refreshBtn').onclick = function(){
+    var range = visibleRangeForActiveTab();
+    ensureRange(range[0], range[1], true);
+  };
+  document.getElementById('errorRetryBtn').onclick = function(){
+    var range = visibleRangeForActiveTab();
+    ensureRange(range[0], range[1], true);
+  };
+
+  document.getElementById('filterPills').addEventListener('click', function(ev){
+    var btn = ev.target.closest('.filter-pill');
+    if(!btn) return;
+    state.taskFilter = btn.getAttribute('data-filter');
+    document.querySelectorAll('.filter-pill').forEach(function(b){ b.classList.toggle('active', b===btn); });
+    renderTasks();
+  });
+  document.getElementById('sortSelect').addEventListener('change', function(ev){ state.taskSort = ev.target.value; renderTasks(); });
+  document.getElementById('openAddTaskBtn').onclick = function(){ openTaskForm(null); };
+
+  /* ---------------- Master render ---------------- */
+  function render(){
+    renderHeader();
+    renderSyncBar();
+    if(state.activeTab === 'today') renderToday();
+    else if(state.activeTab === 'week') renderWeek();
+    else if(state.activeTab === 'tasks'){ renderTasks(); renderTaskForm(); }
+  }
+
+  /* ---------------- Google auth bootstrap ---------------- */
+  function whenGoogleReady(cb){
+    if(window.gapi && window.google && window.google.accounts && window.google.accounts.oauth2){ cb(); }
+    else setTimeout(function(){ whenGoogleReady(cb); }, 120);
+  }
+
+  function initGoogle(){
+    if(googleInitStarted) return;
+    googleInitStarted = true;
+    if(!GOOGLE_CLIENT_ID){ state.authError = 'setup'; renderSyncBar(); return; }
+    whenGoogleReady(function(){
+      // Load the calendar client library.
+      gapi.load('client', function(){
+        var initOpts = { discoveryDocs: [GOOGLE_DISCOVERY] };
+        if(GOOGLE_API_KEY) initOpts.apiKey = GOOGLE_API_KEY;
+        gapi.client.init(initOpts).then(function(){
+          state.gapiReady = true; renderSyncBar();
+        }, function(err){
+          state.authError = 'Google API failed to load. Check your API key / network.';
+          renderSyncBar();
+          console.error('gapi init failed', err);
+        });
+      });
+      // Set up the OAuth token client.
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: GOOGLE_SCOPES,
+        callback: function(resp){
+          var wasSilent = attemptingSilent; attemptingSilent = false;
+          if(resp && resp.error){
+            // A failed *silent* attempt is normal (session expired) — don't show a scary error,
+            // just fall back to the connect prompt. Only surface errors from a real tap.
+            if(!wasSilent){ state.authError = 'Sign-in failed: ' + resp.error; }
+            state.signedIn = false;
+            renderSyncBar();
+            return;
+          }
+          state.signedIn = true;
+          state.authError = null;
+          safeSet('planner-connected-before', '1'); // remember so we can silently reconnect next time
+          renderSyncBar();
+          // First real sync for whatever tab is showing.
+          var range = visibleRangeForActiveTab();
+          ensureRange(range[0], range[1], true);
+        }
+      });
+      state.gisReady = true;
+      renderSyncBar();
+      if(state.mode === 'sync') trySilentSignIn();
+    });
+  }
+
+  function connectGoogle(){
+    if(!tokenClient) return;
+    // Opens the Google account-picker popup. prompt:'consent' the first time
+    // guarantees a token + the calendar permission screen; after that Google is quiet.
+    tokenClient.requestAccessToken({ prompt: state.signedIn ? '' : 'consent' });
+  }
+  // Try to reconnect on launch with no popup, using the still-active Google session.
+  // Only for returning users who connected before, so first-timers never get a surprise popup.
+  function trySilentSignIn(){
+    if(!tokenClient || state.signedIn) return;
+    if(safeGet('planner-connected-before') !== '1') return;
+    attemptingSilent = true;
+    renderSyncBar();
+    try { tokenClient.requestAccessToken({ prompt: '' }); }
+    catch(e){ attemptingSilent = false; renderSyncBar(); }
+    // Safety net: if Google never calls back, stop waiting and show the connect prompt.
+    setTimeout(function(){ if(attemptingSilent){ attemptingSilent = false; renderSyncBar(); } }, 4500);
+  }
+  function disconnectGoogle(){
+    try {
+      var tok = gapi.client.getToken();
+      if(tok && tok.access_token){ google.accounts.oauth2.revoke(tok.access_token, function(){}); }
+      gapi.client.setToken(null);
+    } catch(e){}
+    try { localStorage.removeItem('planner-connected-before'); } catch(e){} // don't auto-reconnect after an explicit disconnect
+    state.signedIn = false;
+    state.rangeCache = {};
+    state.userDismissedConnect = false; // re-offer the connect popup
+    renderSyncBar();
+  }
+
+  // Shows / hides the in-app "Connect your Google account" modal and keeps its
+  // contents in step with auth state. Safe to call on every render.
+  function updateConnectModal(){
+    var modal = document.getElementById('connectModal');
+    if(!modal) return;
+    var shouldShow = state.mode === 'sync' && !state.signedIn && !state.userDismissedConnect && !attemptingSilent;
+    modal.style.display = shouldShow ? 'flex' : 'none';
+    if(!shouldShow) return;
+
+    var title = document.getElementById('gsiTitle');
+    var sub = document.getElementById('gsiSub');
+    var btn = document.getElementById('gsiBtn');
+    var btnText = document.getElementById('gsiBtnText');
+    var note = document.getElementById('gsiNote');
+
+    if(state.authError === 'setup'){
+      title.textContent = 'One step to finish setup';
+      sub.textContent = 'This planner needs a Google OAuth Client ID before it can connect.';
+      btn.style.display = 'none';
+      note.className = 'gsi-modal-note setup';
+      note.textContent = 'Open planner.html and paste your Client ID into GOOGLE_CLIENT_ID (setup steps are in the comment just above it), then open the page over http://localhost — not as a file.';
+    } else {
+      title.textContent = 'Connect your Google Calendar';
+      sub.textContent = 'Sign in with Google to see your events here and add new ones straight to your calendar.';
+      btn.style.display = 'inline-flex';
+      note.className = 'gsi-modal-note';
+      note.textContent = "You'll pick your account in a Google popup. Your events stay in your Google account.";
+      var ready = state.gapiReady && state.gisReady;
+      btn.disabled = !ready;
+      btnText.textContent = ready ? 'Sign in with Google' : 'Loading Google…';
+      if(state.authError && state.authError !== 'setup'){ sub.textContent = state.authError; }
+    }
+  }
+
+  document.getElementById('gsiBtn').onclick = function(){ connectGoogle(); };
+  document.getElementById('gsiDismiss').onclick = function(){ state.userDismissedConnect = true; updateConnectModal(); };
+
+  document.getElementById('connectBtn').onclick = function(){
+    if(state.signedIn){ disconnectGoogle(); }
+    else { state.userDismissedConnect = false; updateConnectModal(); } // reopen the popup
+  };
+
+  /* ---------------- Mode selection ---------------- */
+  function showModeModal(){ document.getElementById('modeModal').style.display = 'flex'; }
+  function hideModeModal(){ document.getElementById('modeModal').style.display = 'none'; }
+  function chooseMode(mode){
+    state.mode = mode;
+    safeSet('planner-mode', mode);
+    hideModeModal();
+    if(mode === 'sync'){
+      state.userDismissedConnect = false;
+      initGoogle();        // guarded — only actually runs once
+      trySilentSignIn();   // if already initialized, still try a quiet reconnect
+    }
+    render();
+    if(mode === 'sync' && state.signedIn){
+      var range = visibleRangeForActiveTab();
+      ensureRange(range[0], range[1], true);
+    }
+  }
+  document.getElementById('modeSyncBtn').onclick = function(){ chooseMode('sync'); };
+  document.getElementById('modeQuickBtn').onclick = function(){ chooseMode('quick'); };
+  document.getElementById('modeBtn').onclick = function(){ showModeModal(); };
+
+  function startForMode(){
+    if(!state.mode){ showModeModal(); return; } // first visit → ask
+    if(state.mode === 'sync') initGoogle();
+  }
+
+  loadAll();
+  startForMode();
+})();
+</script>
+</body>
+</html>

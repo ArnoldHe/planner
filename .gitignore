@@ -1,0 +1,8 @@
+# Never commit Google OAuth secrets
+client_secret*.json
+*.env
+.env*
+
+# OS junk
+.DS_Store
+Thumbs.db
