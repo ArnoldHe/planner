@@ -865,11 +865,41 @@
       }
     }
 
-    // Clean up the leftover text into a title.
-    var title = working.replace(/\b(on|by|due|before|at|the|this|coming)\b/gi, ' ')
-                       .replace(/\s+/g, ' ').trim();
-    title = title.charAt(0).toUpperCase() + title.slice(1);
-    if(!title) title = seg.trim();
+// Clean up conversational/request language so titles stay concise.
+var title = working
+  // Request framing at the beginning.
+  .replace(/^\s*(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:add|put|schedule|create|make)\s+/i, '')
+  .replace(/^\s*please\s+(?:add|put|schedule|create|make)\s+/i, '')
+  .replace(/^\s*(?:add|put|schedule|create|make)\s+/i, '')
+
+  // Reminder / personal framing.
+  .replace(/^\s*remind\s+me\s+to\s+/i, '')
+  .replace(/^\s*(?:i\s+)?(?:need|have|want)\s+to\s+/i, '')
+
+  // Task-list framing that can appear after the useful title.
+  .replace(/\s+as\s+(?:a\s+)?(?:task|to-?do)(?:\s+item)?\b.*$/i, '')
+  .replace(/\s+(?:on|in)\s+(?:my\s+)?(?:task|to-?do)\s+list\b.*$/i, '')
+  .replace(/\s+that\s+(?:needs?|has)\s+to\s+be\s+done\b.*$/i, '')
+  .replace(/\s+(?:needs?|has)\s+to\s+be\s+done\b.*$/i, '')
+
+  // Date/time filler left after the parser extracts the actual date/time.
+  .replace(/\b(on|by|due|before|at|the|this|coming|for)\b/gi, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+// Turn common "-ing" task wording into a cleaner action title.
+title = title
+  .replace(/^Finding\b/i, 'Find')
+  .replace(/^Getting\b/i, 'Get')
+  .replace(/^Buying\b/i, 'Buy')
+  .replace(/^Sending\b/i, 'Send')
+  .replace(/^Emailing\b/i, 'Email')
+  .replace(/^Calling\b/i, 'Call')
+  .replace(/^Finishing\b/i, 'Finish')
+  .replace(/^Submitting\b/i, 'Submit');
+
+title = title.charAt(0).toUpperCase() + title.slice(1);
+if(!title) title = seg.trim();
 
     var wantsTaskWord = /\b(by|due|deadline|submit|finish|turn in|pay|call|email|buy|remember|remind)\b/i.test(seg);
 
