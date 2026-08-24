@@ -796,7 +796,8 @@ function normalizeQuickAddText(text){
 
     // Common action typos.
     .replace(/\b(?:finsih|finsh|finisih)\b/gi, 'finish')
-    .replace(/\b(?:remidn|remnd|remeber)\b/gi, 'remember')
+    .replace(/\b(?:remidn|remnd|remindd)\b/gi, 'remind')
+    .replace(/\b(?:remeber|remeberr|rember)\b/gi, 'remember')
     .replace(/\b(?:scheudle|schedle|schdule)\b/gi, 'schedule')
     .replace(/\b(?:submt|submti|sumbit)\b/gi, 'submit')
     .replace(/\b(?:emaill|emial)\b/gi, 'email')
@@ -885,9 +886,14 @@ function classifyQuickAdd(text){
 
     // Personal task framing.
     .replace(/^\s*remind\s+me\s+(?:that\s+i\s+)?to\s+/i, '')
+    .replace(/^\s*remember\s+to\s+/i, '')
+    .replace(/^\s*remember\s+(?:that\s+i\s+)?(?:need|have|want)\s+to\s+/i, '')
+
+    // Longer phrases must come before shorter ones.
+    .replace(/^\s*(?:maybe|probably)\s+i\s+(?:need|have|want|should)\s+(?:to\s+)?/i, '')
+    .replace(/^\s*(?:i\s+)?should\s+(?:probably\s+|maybe\s+)?/i, '')
+    .replace(/^\s*(?:i\s+)?(?:probably|maybe)\s+(?:need|have|want)\s+to\s+/i, '')
     .replace(/^\s*(?:i\s+)?(?:need|have|want|got)\s+to\s+/i, '')
-    .replace(/^\s*(?:i\s+)?should\s+/i, '')
-    .replace(/^\s*(?:i\s+)?(?:probably|maybe)\s+(?:need\s+to|should|have\s+to)\s+/i, '')
     .replace(/^\s*make\s+sure\s+(?:i\s+)?/i, '')
 
     // Task-list framing after the useful title.
