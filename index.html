@@ -260,6 +260,62 @@
 
   .empty-state{ color: var(--ink-faint); font-size: 13.5px; padding: 6px 0 2px; }
 
+/* ---------- Day navigation ---------- */
+  
+  .day-view-header{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    margin-bottom:18px;
+  }
+  
+  .day-view-center{
+    min-width:220px;
+    text-align:center;
+  }
+  
+  .day-view-label{
+    font-family:'Fraunces', serif;
+    font-size:18px;
+    font-weight:500;
+    color:var(--ink);
+  }
+  
+  .day-nav-btn{
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:18px;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  
+  .day-nav-btn:hover{
+    background:var(--accent-soft);
+    color:var(--accent-deep);
+    border-color:var(--accent-soft);
+  }
+  
+  .day-today-btn{
+    border:none;
+    background:transparent;
+    color:var(--accent-deep);
+    font-size:11.5px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:2px;
+  }
+  
+  .day-today-btn:hover{
+    text-decoration:underline;
+  }
+  
   /* ---------- Week ---------- */
   .week-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; flex-wrap:wrap; gap:10px; }
   .week-nav{ display:flex; align-items:center; gap: 10px; }
@@ -470,7 +526,7 @@
       <p class="subdate" id="headerSubdate">—</p>
     </div>
     <div class="tabs" id="tabBar">
-      <button class="tab-btn active" data-tab="today">Today</button>
+      <button class="tab-btn active" data-tab="today">Day</button>
       <button class="tab-btn" data-tab="week">Week</button>
       <button class="tab-btn" data-tab="tasks">Tasks</button>
     </div>
@@ -514,6 +570,14 @@
 
   <!-- TODAY -->
   <section class="view active" id="view-today">
+    <div class="day-view-header">
+    <button type="button" class="day-nav-btn" id="dayPrev" aria-label="Previous day">‹</button>
+    <div class="day-view-center">
+      <div class="day-view-label" id="dayViewLabel">—</div>
+      <button type="button" class="day-today-btn" id="dayTodayBtn">Today</button>
+    </div>
+    <button type="button" class="day-nav-btn" id="dayNext" aria-label="Next day">›</button>
+    </div> 
     <div class="today-grid">
       <div>
         <div class="panel">
@@ -523,7 +587,7 @@
       </div>
       <div>
         <div class="panel">
-          <h2 class="section-title">Due today <span class="count-badge" id="dueTodayCount">0</span></h2>
+          <h2 class="section-title">Due this day <span class="count-badge" id="dueTodayCount">0</span></h2>
           <div id="todayDue"></div>
         </div>
         <div class="panel">
@@ -668,6 +732,7 @@
     syncError: null,
     syncErrorRange: null,
     activeTab: 'today',
+    dayOffset: 0,
     weekOffset: 0,
     taskFilter: 'all',
     taskSort: 'deadline',
@@ -1056,7 +1121,10 @@ function classifyQuickAdd(text){
     return s.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' – ' + e.toLocaleDateString(undefined, {month:'short', day:'numeric', year: sameYear ? undefined : 'numeric'}) + ', ' + e.getFullYear();
   }
   function visibleRangeForActiveTab(){
-    if(state.activeTab === 'today') return [todayISO, todayISO];
+    if(state.activeTab === 'today'){
+      var iso = currentDayISO();
+      return [iso, iso];
+    }
     if(state.activeTab === 'week'){ var m = currentWeekMonday(); return [toISODate(m), toISODate(addDays(m,6))]; }
     var m2 = currentWeekMonday(); return [toISODate(m2), toISODate(addDays(m2,6))];
   }
@@ -1176,7 +1244,40 @@ function classifyQuickAdd(text){
 
   /* ---------------- Rendering: Today ---------------- */
   function renderToday(){
-    var evs = eventsOn(todayISO);
+    var selectedDate = currentDayDate();
+    var selectedISO = currentDayISO();
+    var label;
+    if(state.dayOffset === 0){
+      label = 'Today · ' + selectedDate.toLocaleDateString(undefined, {
+        weekday:'long',
+        month:'long',
+        day:'numeric'
+      });
+    } else if(state.dayOffset === 1){
+      label = 'Tomorrow · ' + selectedDate.toLocaleDateString(undefined, {
+        weekday:'long',
+        month:'long',
+        day:'numeric'
+      });
+    } else if(state.dayOffset === -1){
+      label = 'Yesterday · ' + selectedDate.toLocaleDateString(undefined, {
+        weekday:'long',
+        month:'long',
+        day:'numeric'
+      });
+    } else {
+      label = selectedDate.toLocaleDateString(undefined, {
+        weekday:'long',
+        month:'long',
+        day:'numeric'
+      });
+    }
+    
+    document.getElementById('dayViewLabel').textContent = label;  
+    document.getElementById('dayTodayBtn').style.visibility =
+      state.dayOffset === 0 ? 'hidden' : 'visible';
+    var evs = eventsOn(selectedISO);
+    
     var evHtml = evs.length ? evs.map(function(e){
       return '<div class="event-row">'
         + '<div class="event-time' + (e.allDay?' allday':'') + '">' + (e.allDay ? 'All day' : fmtTime(e.start)) + '</div>'
@@ -1186,11 +1287,17 @@ function classifyQuickAdd(text){
     }).join('') : '<p class="empty-state">Nothing on the calendar today.</p>';
     document.getElementById('todayEvents').innerHTML = evHtml;
 
-    var due = state.tasks.filter(function(t){ return isDueOn(t, todayISO); }).sort(function(a,b){ return priorityRank(a.priority)-priorityRank(b.priority); });
+    var due = state.tasks.filter(function(t){ return isDueOn(t, selectedISO); }).sort(function(a,b){ return priorityRank(a.priority)-priorityRank(b.priority); });
     document.getElementById('dueTodayCount').textContent = due.length;
     document.getElementById('todayDue').innerHTML = due.length ? due.map(taskRowHtml).join('') : '<p class="empty-state">No tasks due today.</p>';
 
-    var overdue = state.tasks.filter(isOverdue).sort(function(a,b){ return a.dueDate.localeCompare(b.dueDate); });
+    var overdue = state.tasks.filter(function(t){
+      return t.dueDate &&
+             t.dueDate < selectedISO &&
+             t.status !== 'done';
+    }).sort(function(a,b){
+      return a.dueDate.localeCompare(b.dueDate);
+    });
     document.getElementById('overdueCount').textContent = overdue.length;
     document.getElementById('todayOverdue').innerHTML = overdue.length ? overdue.map(taskRowHtml).join('') : '<p class="empty-state">Nothing overdue. Clean slate.</p>';
 
@@ -1235,6 +1342,11 @@ function classifyQuickAdd(text){
   }
 
   /* ---------------- Rendering: Week ---------------- */
+  function currentDayDate(){
+    return addDays(todayDate, state.dayOffset); }
+  function currentDayISO(){
+    return toISODate(currentDayDate()); }
+  
   function currentWeekMonday(){ return addDays(startOfWeek(todayDate), state.weekOffset*7); }
   function renderWeek(){
     var monday = currentWeekMonday();
@@ -1578,6 +1690,28 @@ function classifyQuickAdd(text){
     var btn = ev.target.closest('.tab-btn');
     if(btn) switchTab(btn.getAttribute('data-tab'));
   });
+
+document.getElementById('dayPrev').onclick = function(){
+  state.dayOffset--;
+
+  var iso = currentDayISO();
+
+  ensureRange(iso, iso, false);
+  renderToday();
+};
+
+  document.getElementById('dayNext').onclick = function(){
+    state.dayOffset++;
+    var iso = currentDayISO();
+    ensureRange(iso, iso, false);
+    renderToday();
+  };  
+  document.getElementById('dayTodayBtn').onclick = function(){
+    state.dayOffset = 0;
+    var iso = currentDayISO();
+    ensureRange(iso, iso, false);
+    renderToday();
+  };
 
   document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
