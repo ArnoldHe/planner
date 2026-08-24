@@ -898,8 +898,8 @@ function classifyQuickAdd(text){
     .replace(/^\s*make\s+sure\s+(?:i\s+)?/i, '')
     
     // Natural event phrasing.
-    .replace(/^\s*i\s+(?:will\s+)?(?:have|having)\s+/i, '')
-    .replace(/^\s*i(?:'m|\s+am)\s+having\s+/i, '')
+    .replace(/^\s*i\s+(?:(?:will|wanna|want\s+to)\s+)?(?:have|having)\s+/i, '')
+    .replace(/^\s*(?:i'm|im|i\s+am)\s+having\s+/i, '')
     
     // Task-list framing after the useful title.
     .replace(/\s+as\s+(?:a\s+)?(?:task|to-?do)(?:\s+item)?\b.*$/i, '')
