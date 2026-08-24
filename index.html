@@ -332,7 +332,46 @@
   }
   .week-today-btn:hover{ color: var(--accent-deep); border-color: var(--accent-soft); }
 
-  
+.week-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.week-zoom{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:3px;
+}
+
+.week-zoom button{
+  width:28px;
+  height:28px;
+  border:none;
+  background:transparent;
+  border-radius:50%;
+  cursor:pointer;
+  color:var(--ink-soft);
+  font-size:15px;
+}
+
+.week-zoom button:hover{
+  background:var(--accent-soft);
+  color:var(--accent-deep);
+}
+
+#weekZoomLabel{
+  min-width:42px;
+  text-align:center;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--ink-faint);
+}
+
 /* ---------- Calendar-style week grid ---------- */
 
 .calendar-week-shell{
@@ -454,18 +493,20 @@
   grid-template-columns:repeat(7, minmax(120px,1fr));
   position:relative;
 }
+  
 .calendar-day-timeline{
   position:relative;
   border-right:1px solid var(--line-soft);
-  background:
+  background-image:
     repeating-linear-gradient(
       to bottom,
       transparent 0,
-      transparent 59px,
-      var(--line-soft) 59px,
-      var(--line-soft) 60px
+      transparent calc(var(--week-hour-height) - 1px),
+      var(--line-soft) calc(var(--week-hour-height) - 1px),
+      var(--line-soft) var(--week-hour-height)
     );
 }
+
 .calendar-day-timeline:last-child{
   border-right:none;
 }
@@ -754,7 +795,15 @@
         <span id="weekSyncingIndicator" style="display:none;"><span class="spinner dark"></span></span>
         <button id="weekNext" aria-label="Next week">›</button>
       </div>
-      <button class="week-today-btn" id="weekTodayBtn">This week</button>
+      <div class="week-actions">
+        <div class="week-zoom">
+          <button type="button" id="weekZoomOut" aria-label="Zoom out">−</button>
+          <span id="weekZoomLabel">100%</span>
+          <button type="button" id="weekZoomIn" aria-label="Zoom in">＋</button>
+        </div>
+      
+        <button class="week-today-btn" id="weekTodayBtn">This week</button>
+      </div>
     </div>
     <div class="calendar-week-shell">
   <div class="calendar-week-scroll">
@@ -889,6 +938,7 @@
     activeTab: 'today',
     dayOffset: 0,
     weekOffset: 0,
+    weekZoom: 1,
     taskFilter: 'all',
     taskSort: 'deadline',
     formOpen: false,
@@ -1533,9 +1583,11 @@ function renderWeek(){
     + sunday.getFullYear();
 
   document.getElementById('weekLabel').textContent = label;
-
+  document.getElementById('weekZoomLabel').textContent =
+    Math.round(state.weekZoom * 100) + '%';
   document.getElementById('weekSyncingIndicator').style.display =
     state.syncing ? 'inline-flex' : 'none';
+
 
 
   /* ---------- Day headers ---------- */
@@ -1615,7 +1667,11 @@ function renderWeek(){
 
   var START_HOUR = 6;
   var END_HOUR = 24;
-  var PIXELS_PER_HOUR = 60;
+  var PIXELS_PER_HOUR = 60 * state.weekZoom;
+    document.documentElement.style.setProperty(
+    '--week-hour-height',
+    PIXELS_PER_HOUR + 'px'
+  );
 
   var totalHeight =
     (END_HOUR - START_HOUR) * PIXELS_PER_HOUR;
@@ -2097,7 +2153,16 @@ document.getElementById('dayPrev').onclick = function(){
   document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+  document.getElementById('weekZoomOut').onclick = function(){
+    state.weekZoom = Math.max(0.65, state.weekZoom - 0.15);
+    renderWeek();
+    };
 
+  document.getElementById('weekZoomIn').onclick = function(){
+    state.weekZoom = Math.min(1.6, state.weekZoom + 0.15);
+    renderWeek();
+    };
+  
   document.getElementById('refreshBtn').onclick = function(){
     var range = visibleRangeForActiveTab();
     ensureRange(range[0], range[1], true);
