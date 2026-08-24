@@ -779,24 +779,81 @@
    * "7:30pm", "19:00", "at 7". Returns a resolved Promise to match the old
    * async interface so the approval flow is unchanged.
    */
-  function classifyQuickAdd(text){
-    try {
-      var segments = text.split(/\s*(?:,|;|\band\b)\s*/i).map(function(s){ return s.trim(); }).filter(Boolean);
-      if(segments.length === 0) segments = [text.trim()];
-      var events = [], tasks = [];
-      segments.forEach(function(seg){
-        var item = parseSegment(seg);
-        if(!item) return;
-        if(item.kind === 'event') events.push(item.data); else tasks.push(item.data);
-      });
-      if(events.length === 0 && tasks.length === 0){
-        return Promise.reject(new Error("Couldn't find a task or event in that — try adding a bit more detail."));
-      }
-      return Promise.resolve({ events: events, tasks: tasks });
-    } catch(e){
-      return Promise.reject(new Error("Couldn't parse that — try rephrasing or add it manually."));
+function normalizeQuickAddText(text){
+  return text
+    // Tomorrow / today shorthand and common typos.
+    .replace(/\b(?:tmr|tmrw|tomorow|tommorow|tomorroww)\b/gi, 'tomorrow')
+    .replace(/\b(?:tdy|todday|tooday)\b/gi, 'today')
+
+    // Weekday typos.
+    .replace(/\b(?:monay|mnday|mondy)\b/gi, 'monday')
+    .replace(/\b(?:tuesdy|tueday|tuseday)\b/gi, 'tuesday')
+    .replace(/\b(?:wednsday|wensday|wednesdayy|wedneday)\b/gi, 'wednesday')
+    .replace(/\b(?:thrusday|thurday|thursdayy)\b/gi, 'thursday')
+    .replace(/\b(?:firday|fridy|frday)\b/gi, 'friday')
+    .replace(/\b(?:satday|satrday)\b/gi, 'saturday')
+    .replace(/\b(?:sundy|sundday)\b/gi, 'sunday')
+
+    // Common action typos.
+    .replace(/\b(?:finsih|finsh|finisih)\b/gi, 'finish')
+    .replace(/\b(?:remidn|remnd|remindd)\b/gi, 'remind')
+    .replace(/\b(?:remeber|remeberr|rember)\b/gi, 'remember')
+    .replace(/\b(?:scheudle|schedle|schdule)\b/gi, 'schedule')
+    .replace(/\b(?:submt|submti|sumbit)\b/gi, 'submit')
+    .replace(/\b(?:emaill|emial)\b/gi, 'email')
+
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitQuickAddItems(text){
+  return text
+    .split(/\s*(?:,|;|\band\b)\s*/i)
+    .map(function(s){ return s.trim(); })
+    .filter(Boolean);
+}
+
+function classifyQuickAdd(text){
+  try {
+    text = normalizeQuickAddText(text);
+
+    var segments = splitQuickAddItems(text);
+
+    if(segments.length === 0){
+      segments = [text.trim()];
     }
+
+    var events = [];
+    var tasks = [];
+
+    segments.forEach(function(seg){
+      var item = parseSegment(seg);
+      if(!item) return;
+
+      if(item.kind === 'event'){
+        events.push(item.data);
+      } else {
+        tasks.push(item.data);
+      }
+    });
+
+    if(events.length === 0 && tasks.length === 0){
+      return Promise.reject(
+        new Error("Couldn't find a task or event in that — try adding a bit more detail.")
+      );
+    }
+
+    return Promise.resolve({
+      events: events,
+      tasks: tasks
+    });
+
+  } catch(e){
+    return Promise.reject(
+      new Error("Couldn't parse that — try rephrasing or add it manually.")
+    );
   }
+}
 
   var MEAL_WORDS = /\b(dinner|lunch|breakfast|brunch|coffee|drinks?|meal)\b/i;
   var DATE_WORD_RE = /\b(today|tomorrow|tmrw|tonight)\b/i;
@@ -814,6 +871,66 @@
     return addDays(base, delta);
   }
 
+  function cleanQuickAddTitle(working, original){
+  var title = working
+    // Conversational filler.
+    .replace(/^\s*(?:(?:okay|ok|wait|so|like|uh|um|yo|hey)\s*[,\-:]?\s*)+/i, '')
+
+    // Request framing.
+    .replace(
+      /^\s*(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:like\s+)?(?:add|put|schedule|create|make)\s+/i,
+      ''
+    )
+    .replace(/^\s*please\s+(?:add|put|schedule|create|make)\s+/i, '')
+    .replace(/^\s*(?:add|put|schedule|create|make)\s+/i, '')
+
+    // Personal task framing.
+    .replace(/^\s*remind\s+me\s+(?:that\s+i\s+)?to\s+/i, '')
+    .replace(/^\s*remember\s+to\s+/i, '')
+    .replace(/^\s*remember\s+(?:that\s+i\s+)?(?:need|want)\s+to\s+/i, '')
+
+    // Longer phrases must come before shorter ones.
+    .replace(/^\s*(?:maybe|probably)\s+i\s+(?:need|have|want|should)\s+(?:to\s+)?/i, '')
+    .replace(/^\s*(?:i\s+)?should\s+(?:probably\s+|maybe\s+)?/i, '')
+    .replace(/^\s*(?:i\s+)?(?:probably|maybe)\s+(?:need|want)\s+to\s+/i, '')
+    .replace(/^\s*(?:i\s+)?(?:need|want|got)\s+to\s+/i, '')
+    .replace(/^\s*i\s+have\s+to\s+/i, '')
+    .replace(/^\s*make\s+sure\s+(?:i\s+)?/i, '')
+    
+    // Natural event phrasing.
+    .replace(/^\s*i\s+(?:(?:will|wanna|want\s+to)\s+)?(?:have|having)\s+/i, '')
+    .replace(/^\s*(?:i'm|im|i\s+am)\s+having\s+/i, '')
+    
+    // Task-list framing after the useful title.
+    .replace(/\s+as\s+(?:a\s+)?(?:task|to-?do)(?:\s+item)?\b.*$/i, '')
+    .replace(/\s+(?:on|in)\s+(?:my\s+)?(?:task|to-?do)\s+list\b.*$/i, '')
+    .replace(/\s+that\s+(?:needs?|has)\s+to\s+be\s+done\b.*$/i, '')
+    .replace(/\s+(?:needs?|has)\s+to\s+be\s+done\b.*$/i, '')
+    .replace(/\s+(?:as|for)\s+(?:a\s+)?reminder\b.*$/i, '')
+
+    // Leftover date/time filler.
+    .replace(/\b(on|by|due|before|at|the|this|coming|for)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Cleaner action phrasing.
+  title = title
+    .replace(/^Finding\b/i, 'Find')
+    .replace(/^Getting\b/i, 'Get')
+    .replace(/^Buying\b/i, 'Buy')
+    .replace(/^Sending\b/i, 'Send')
+    .replace(/^Emailing\b/i, 'Email')
+    .replace(/^Calling\b/i, 'Call')
+    .replace(/^Finishing\b/i, 'Finish')
+    .replace(/^Submitting\b/i, 'Submit');
+
+  if(!title){
+    title = original.trim();
+  }
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+  
   function parseSegment(seg){
     var working = seg;
     var dateISO = null, timeHHMM = null, hadTimeWord = false;
@@ -865,11 +982,7 @@
       }
     }
 
-    // Clean up the leftover text into a title.
-    var title = working.replace(/\b(on|by|due|before|at|the|this|coming)\b/gi, ' ')
-                       .replace(/\s+/g, ' ').trim();
-    title = title.charAt(0).toUpperCase() + title.slice(1);
-    if(!title) title = seg.trim();
+    var title = cleanQuickAddTitle(working, seg);
 
     var wantsTaskWord = /\b(by|due|deadline|submit|finish|turn in|pay|call|email|buy|remember|remind)\b/i.test(seg);
 
