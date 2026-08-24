@@ -332,35 +332,219 @@
   }
   .week-today-btn:hover{ color: var(--accent-deep); border-color: var(--accent-soft); }
 
-  .week-grid{
-    display:grid; grid-template-columns: repeat(7, minmax(150px,1fr));
-    gap: 10px; overflow-x:auto; padding-bottom: 6px;
+.week-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.week-zoom{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:3px;
+}
+
+.week-zoom button{
+  width:28px;
+  height:28px;
+  border:none;
+  background:transparent;
+  border-radius:50%;
+  cursor:pointer;
+  color:var(--ink-soft);
+  font-size:15px;
+}
+
+.week-zoom button:hover{
+  background:var(--accent-soft);
+  color:var(--accent-deep);
+}
+
+#weekZoomLabel{
+  min-width:42px;
+  text-align:center;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--ink-faint);
+}
+
+/* ---------- Calendar-style week grid ---------- */
+
+.calendar-week-shell{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.calendar-week-scroll{
+  overflow-x:auto;
+  width:100%;
+}
+.calendar-week-head{
+  display:grid;
+  grid-template-columns:64px repeat(7, minmax(120px,1fr));
+  min-width:904px;
+  border-bottom:1px solid var(--line);
+  background:var(--paper-raised);
+}
+.calendar-week-head-spacer{
+  border-right:1px solid var(--line-soft);
+}
+.calendar-day-head{
+  text-align:center;
+  padding:10px 6px;
+  border-right:1px solid var(--line-soft);
+}
+.calendar-day-head:last-child{
+  border-right:none;
+}
+.calendar-day-name{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+}
+.calendar-day-number{
+  font-family:'Fraunces', serif;
+  font-size:19px;
+  margin-top:2px;
+  color:var(--ink);
+}
+.calendar-day-head.is-today{
+  background:var(--accent-soft);
+}
+.calendar-day-head.is-today .calendar-day-number{
+  color:var(--accent-deep);
+}
+.calendar-all-day-row{
+  display:grid;
+  grid-template-columns:64px minmax(840px,1fr);
+  min-width:904px;
+  border-bottom:1px solid var(--line);
+}
+.calendar-all-day-label{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--ink-faint);
+  padding:10px 8px;
+  text-align:right;
+  border-right:1px solid var(--line-soft);
+}
+.calendar-all-day-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(120px,1fr));
+}
+.calendar-all-day-cell{
+  min-height:44px;
+  padding:5px;
+  border-right:1px solid var(--line-soft);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.calendar-all-day-cell:last-child{
+  border-right:none;
+}
+.calendar-all-day-event{
+  background:var(--accent-soft);
+  color:var(--accent-deep);
+  border-radius:5px;
+  padding:4px 6px;
+  font-size:11px;
+  line-height:1.25;
+}
+.calendar-task-chip{
+  border:1px dashed var(--slate);
+  color:var(--slate);
+  border-radius:5px;
+  padding:3px 6px;
+  font-size:10.5px;
+  cursor:pointer;
+}
+.calendar-task-chip.is-done{
+  opacity:.55;
+  text-decoration:line-through;
+}
+.calendar-time-grid-wrap{
+  display:grid;
+  grid-template-columns:64px minmax(840px,1fr);
+  min-width:904px;
+}
+.calendar-time-axis{
+  position:relative;
+  border-right:1px solid var(--line-soft);
+}
+.calendar-time-label{
+  position:absolute;
+  right:8px;
+  transform:translateY(-50%);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--ink-faint);
+}
+.calendar-time-grid{
+  display:grid;
+  grid-template-columns:repeat(7, minmax(120px,1fr));
+  position:relative;
+}
+  
+.calendar-day-timeline{
+  position:relative;
+  border-right:1px solid var(--line-soft);
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--week-hour-height) - 1px),
+      var(--line-soft) calc(var(--week-hour-height) - 1px),
+      var(--line-soft) var(--week-hour-height)
+    );
+}
+
+.calendar-day-timeline:last-child{
+  border-right:none;
+}
+.calendar-day-timeline.is-today{
+  background-color:rgba(79,109,100,.035);
+}
+.calendar-event-block{
+  position:absolute;
+  left:4px;
+  right:4px;
+  background:var(--accent-soft);
+  border-left:3px solid var(--accent);
+  border-radius:6px;
+  padding:5px 6px;
+  overflow:hidden;
+  color:var(--ink);
+  font-size:11px;
+  line-height:1.25;
+}
+.calendar-event-title{
+  font-weight:600;
+}
+.calendar-event-time{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:9.5px;
+  color:var(--accent-deep);
+  margin-top:1px;
+}
+.calendar-event-location{
+  font-size:9.5px;
+  color:var(--ink-soft);
+  margin-top:2px;
+}
+@media (max-width:720px){
+  .calendar-week-shell{
+    border-radius:8px;
   }
-  .day-col{
-    background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
-    min-height: 230px; box-shadow: var(--shadow); display:flex; flex-direction:column;
-  }
-  .day-col.is-today{ border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
-  .day-col-head{
-    padding: 12px 13px 10px; border-bottom: 1px solid var(--line-soft);
-  }
-  .day-name{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing:0.08em; text-transform:uppercase; color: var(--ink-faint); }
-  .day-num{ font-family:'Fraunces', serif; font-size: 20px; font-weight:500; margin-top: 2px; color: var(--ink); }
-  .is-today .day-num{ color: var(--accent-deep); }
-  .day-col-body{ padding: 8px 11px 12px; flex:1; }
-  .day-event{ padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
-  .day-event:last-of-type{ border-bottom: none; }
-  .day-event-time{ font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--accent-deep); }
-  .day-event-time.allday{ color: var(--ink-faint); }
-  .day-event-title{ font-size: 12.5px; color: var(--ink); margin-top: 1px; line-height:1.35; }
-  .day-tasks{ margin-top: 8px; display:flex; flex-direction:column; gap: 5px; }
-  .day-task-chip{
-    display:flex; align-items:center; gap: 6px; font-size: 12px; color: var(--ink-soft);
-    cursor:pointer;
-  }
-  .day-task-chip .dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-  .day-task-chip.is-done{ text-decoration: line-through; color: var(--ink-faint); }
-  .day-empty{ font-size: 11.5px; color: var(--ink-faint); padding: 4px 0; }
+}
 
   /* ---------- Tasks ---------- */
   .tasks-toolbar{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap: 12px; margin-bottom: 16px; }
@@ -611,9 +795,29 @@
         <span id="weekSyncingIndicator" style="display:none;"><span class="spinner dark"></span></span>
         <button id="weekNext" aria-label="Next week">›</button>
       </div>
-      <button class="week-today-btn" id="weekTodayBtn">This week</button>
+      <div class="week-actions">
+        <div class="week-zoom">
+          <button type="button" id="weekZoomOut" aria-label="Zoom out">−</button>
+          <span id="weekZoomLabel">100%</span>
+          <button type="button" id="weekZoomIn" aria-label="Zoom in">＋</button>
+        </div>
+      
+        <button class="week-today-btn" id="weekTodayBtn">This week</button>
+      </div>
     </div>
-    <div class="week-grid" id="weekGrid"></div>
+    <div class="calendar-week-shell">
+  <div class="calendar-week-scroll">
+    <div class="calendar-week-head" id="calendarWeekHead"></div>
+      <div class="calendar-all-day-row">
+        <div class="calendar-all-day-label">All day</div>
+        <div class="calendar-all-day-grid" id="calendarAllDayGrid"></div>
+      </div>  
+      <div class="calendar-time-grid-wrap"> 
+        <div class="calendar-time-axis" id="calendarTimeAxis"></div>  
+        <div class="calendar-time-grid" id="calendarTimeGrid"></div>  
+      </div>  
+    </div>  
+  </div>
   </section>
 
   <!-- TASKS -->
@@ -734,6 +938,7 @@
     activeTab: 'today',
     dayOffset: 0,
     weekOffset: 0,
+    weekZoom: 1,
     taskFilter: 'all',
     taskSort: 'deadline',
     formOpen: false,
@@ -1348,40 +1553,272 @@ function classifyQuickAdd(text){
     return toISODate(currentDayDate()); }
   
   function currentWeekMonday(){ return addDays(startOfWeek(todayDate), state.weekOffset*7); }
-  function renderWeek(){
-    var monday = currentWeekMonday();
-    var sunday = addDays(monday,6);
-    var label = monday.toLocaleDateString(undefined,{month:'short', day:'numeric'}) + ' – ' + sunday.toLocaleDateString(undefined,{month:'short', day:'numeric'}) + ', ' + sunday.getFullYear();
-    document.getElementById('weekLabel').textContent = label;
-    document.getElementById('weekSyncingIndicator').style.display = state.syncing ? 'inline-flex' : 'none';
+  
+  function timeToMinutes(hhmm){
+  if(!hhmm) return 0;
 
-    var html = '';
-    for(var i=0;i<7;i++){
-      var d = addDays(monday,i);
-      var iso = toISODate(d);
-      var isToday = isSameDay(d, todayDate);
-      var evs = eventsOn(iso);
-      var dayTasks = state.tasks.filter(function(t){ return t.dueDate === iso; });
+  var parts = hhmm.split(':');
 
-      var evHtml = evs.length ? evs.map(function(e){
-        return '<div class="day-event"><div class="day-event-time' + (e.allDay?' allday':'') + '">' + (e.allDay?'All day':fmtTime(e.start)) + '</div><div class="day-event-title">' + escapeHtml(e.title) + '</div></div>';
-      }).join('') : '<div class="day-empty">No events</div>';
+  return (
+    parseInt(parts[0],10) * 60 +
+    parseInt(parts[1],10)
+  );
+}
 
-      var taskHtml = dayTasks.length ? '<div class="day-tasks">' + dayTasks.map(function(t){
-        var color = t.priority==='high' ? 'var(--rose)' : t.priority==='medium' ? 'var(--amber)' : 'var(--slate)';
-        return '<div class="day-task-chip' + (t.status==='done'?' is-done':'') + '" data-action="edit" data-id="' + t.id + '"><span class="dot" style="background:' + color + '"></span>' + escapeHtml(t.name) + '</div>';
-      }).join('') + '</div>' : '';
+function renderWeek(){
+  var monday = currentWeekMonday();
+  var sunday = addDays(monday,6);
 
-      html += '<div class="day-col' + (isToday?' is-today':'') + '">'
-        + '<div class="day-col-head"><div class="day-name">' + DAY_LABELS[i] + '</div><div class="day-num">' + d.getDate() + '</div></div>'
-        + '<div class="day-col-body">' + evHtml + taskHtml + '</div></div>';
-    }
-    document.getElementById('weekGrid').innerHTML = html;
-    document.querySelectorAll('#weekGrid [data-action="edit"]').forEach(function(el){
-      el.onclick = function(){ openTaskForm(el.getAttribute('data-id')); switchTab('tasks'); };
-    });
+  var label =
+    monday.toLocaleDateString(undefined,{
+      month:'short',
+      day:'numeric'
+    })
+    + ' – '
+    + sunday.toLocaleDateString(undefined,{
+      month:'short',
+      day:'numeric'
+    })
+    + ', '
+    + sunday.getFullYear();
+
+  document.getElementById('weekLabel').textContent = label;
+  document.getElementById('weekZoomLabel').textContent =
+    Math.round(state.weekZoom * 100) + '%';
+  document.getElementById('weekSyncingIndicator').style.display =
+    state.syncing ? 'inline-flex' : 'none';
+
+
+
+  /* ---------- Day headers ---------- */
+
+  var headHtml =
+    '<div class="calendar-week-head-spacer"></div>';
+
+  for(var i=0;i<7;i++){
+    var d = addDays(monday,i);
+
+    var isToday = isSameDay(d,todayDate);
+
+    headHtml +=
+      '<div class="calendar-day-head'
+      + (isToday ? ' is-today' : '')
+      + '">'
+      + '<div class="calendar-day-name">'
+      + DAY_LABELS[i]
+      + '</div>'
+      + '<div class="calendar-day-number">'
+      + d.getDate()
+      + '</div>'
+      + '</div>';
   }
 
+  document.getElementById('calendarWeekHead').innerHTML =
+    headHtml;
+
+
+  /* ---------- All-day events + tasks ---------- */
+
+  var allDayHtml = '';
+
+  for(var j=0;j<7;j++){
+    var dayDate = addDays(monday,j);
+    var iso = toISODate(dayDate);
+
+    var allDayEvents = eventsOn(iso).filter(function(e){
+      return e.allDay;
+    });
+
+    var dayTasks = state.tasks.filter(function(t){
+      return t.dueDate === iso;
+    });
+
+    var cellHtml = '';
+
+    allDayEvents.forEach(function(e){
+      cellHtml +=
+        '<div class="calendar-all-day-event">'
+        + escapeHtml(e.title)
+        + '</div>';
+    });
+
+    dayTasks.forEach(function(t){
+      cellHtml +=
+        '<div class="calendar-task-chip'
+        + (t.status === 'done' ? ' is-done' : '')
+        + '" data-action="edit" data-id="'
+        + t.id
+        + '">'
+        + escapeHtml(t.name)
+        + '</div>';
+    });
+
+    allDayHtml +=
+      '<div class="calendar-all-day-cell">'
+      + cellHtml
+      + '</div>';
+  }
+
+  document.getElementById('calendarAllDayGrid').innerHTML =
+    allDayHtml;
+
+
+  /* ---------- Time grid ---------- */
+
+  var START_HOUR = 6;
+  var END_HOUR = 24;
+  var PIXELS_PER_HOUR = 60 * state.weekZoom;
+    document.documentElement.style.setProperty(
+    '--week-hour-height',
+    PIXELS_PER_HOUR + 'px'
+  );
+
+  var totalHeight =
+    (END_HOUR - START_HOUR) * PIXELS_PER_HOUR;
+
+
+  /* Time labels */
+
+  var axisHtml = '';
+
+  for(var hour=START_HOUR; hour<=END_HOUR; hour++){
+    var displayHour;
+
+    if(hour === 24){
+      displayHour = '12am';
+    } else {
+      var suffix = hour >= 12 ? 'pm' : 'am';
+      var h12 = hour % 12;
+
+      if(h12 === 0) h12 = 12;
+
+      displayHour = h12 + suffix;
+    }
+
+    var top =
+      (hour - START_HOUR) * PIXELS_PER_HOUR;
+
+    axisHtml +=
+      '<div class="calendar-time-label" style="top:'
+      + top
+      + 'px;">'
+      + displayHour
+      + '</div>';
+  }
+
+  document.getElementById('calendarTimeAxis').style.height =
+    totalHeight + 'px';
+
+  document.getElementById('calendarTimeAxis').innerHTML =
+    axisHtml;
+
+
+  /* Day timelines */
+
+  var gridHtml = '';
+
+  for(var dayIndex=0; dayIndex<7; dayIndex++){
+    var date = addDays(monday,dayIndex);
+    var dateISO = toISODate(date);
+
+    var timedEvents = eventsOn(dateISO).filter(function(e){
+      return !e.allDay && e.start;
+    });
+
+    var eventHtml = '';
+
+    timedEvents.forEach(function(e){
+      var startMinutes =
+        timeToMinutes(e.start);
+
+      var endMinutes =
+        e.end
+          ? timeToMinutes(e.end)
+          : startMinutes + 60;
+
+      var gridStartMinutes =
+        START_HOUR * 60;
+
+      var gridEndMinutes =
+        END_HOUR * 60;
+
+      if(endMinutes <= gridStartMinutes ||
+         startMinutes >= gridEndMinutes){
+        return;
+      }
+
+      var clippedStart =
+        Math.max(startMinutes,gridStartMinutes);
+
+      var clippedEnd =
+        Math.min(endMinutes,gridEndMinutes);
+
+      var top =
+        ((clippedStart - gridStartMinutes) / 60)
+        * PIXELS_PER_HOUR;
+
+      var height =
+        ((clippedEnd - clippedStart) / 60)
+        * PIXELS_PER_HOUR;
+
+      height = Math.max(height,22);
+
+      var showLocation =
+        height >= 55 && e.location;
+
+      eventHtml +=
+        '<div class="calendar-event-block" style="top:'
+        + top
+        + 'px;height:'
+        + height
+        + 'px;">'
+
+        + '<div class="calendar-event-title">'
+        + escapeHtml(e.title)
+        + '</div>'
+
+        + '<div class="calendar-event-time">'
+        + fmtTime(e.start)
+        + (e.end ? '–' + fmtTime(e.end) : '')
+        + '</div>'
+
+        + (showLocation
+          ? '<div class="calendar-event-location">'
+            + escapeHtml(e.location)
+            + '</div>'
+          : '')
+
+        + '</div>';
+    });
+
+    gridHtml +=
+      '<div class="calendar-day-timeline'
+      + (isSameDay(date,todayDate)
+        ? ' is-today'
+        : '')
+      + '" style="height:'
+      + totalHeight
+      + 'px;">'
+      + eventHtml
+      + '</div>';
+  }
+
+  document.getElementById('calendarTimeGrid').innerHTML =
+    gridHtml;
+
+
+  /* Task editing still works */
+
+  document.querySelectorAll(
+    '#calendarAllDayGrid [data-action="edit"]'
+  ).forEach(function(el){
+    el.onclick = function(){
+      openTaskForm(el.getAttribute('data-id'));
+      switchTab('tasks');
+    };
+  });
+}
+  
   /* ---------------- Rendering: Tasks ---------------- */
   function filteredSortedTasks(){
     var list = state.tasks.slice();
@@ -1716,7 +2153,16 @@ document.getElementById('dayPrev').onclick = function(){
   document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+  document.getElementById('weekZoomOut').onclick = function(){
+    state.weekZoom = Math.max(0.65, state.weekZoom - 0.15);
+    renderWeek();
+    };
 
+  document.getElementById('weekZoomIn').onclick = function(){
+    state.weekZoom = Math.min(1.6, state.weekZoom + 0.15);
+    renderWeek();
+    };
+  
   document.getElementById('refreshBtn').onclick = function(){
     var range = visibleRangeForActiveTab();
     ensureRange(range[0], range[1], true);
