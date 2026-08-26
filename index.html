@@ -937,6 +937,32 @@
       ? BROWSER_TZ
       : state.timezoneChoice;
   }
+  function dateTimePartsInTimezone(date){
+    var parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: currentTimezone(),
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(date);
+    var out = {}; 
+    parts.forEach(function(p){
+      if(p.type !== 'literal'){
+        out[p.type] = p.value;
+      }
+    });
+    return {
+      date:
+        out.year + '-' +
+        out.month + '-' +
+        out.day,  
+      time:
+        out.hour + ':' +
+        out.minute
+    };
+  }
   function escapeHtml(s){
     return String(s==null?'':s).replace(/[&<>"']/g, function(c){
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
@@ -961,6 +987,13 @@
 
   var todayDate = new Date();
   var todayISO = toISODate(todayDate);
+
+  function refreshPlannerDateContext(){
+    var nowParts = dateTimePartsInTimezone(new Date());
+  
+    todayISO = nowParts.date;
+    todayDate = parseISODate(todayISO);
+  }
 
   /* ---------------- State ---------------- */
   var state = {
@@ -1009,15 +1042,39 @@
                location:g.location||null, notes:g.description||null };
     }
     var sd = new Date(g.start.dateTime);
-    var ed = g.end && g.end.dateTime ? new Date(g.end.dateTime) : null;
+    var ed =
+      g.end && g.end.dateTime
+        ? new Date(g.end.dateTime)
+        : null;
+    
+    var startParts =
+      dateTimePartsInTimezone(sd);
+    
+    var endParts =
+      ed
+        ? dateTimePartsInTimezone(ed)
+        : null;
+    
     return {
-      id: g.id, title: title,
-      date: toISODate(sd),
-      start: pad(sd.getHours()) + ':' + pad(sd.getMinutes()),
-      end: ed ? (pad(ed.getHours()) + ':' + pad(ed.getMinutes())) : null,
+      id: g.id,
+      title: title,
+    
+      date: startParts.date,
+      start: startParts.time,
+      end: endParts ? endParts.time : null,
+    
       allDay: false,
+    
       location: g.location || null,
-      notes: g.description || null
+      notes: g.description || null,
+    
+      // Keep the original timestamps so timezone changes
+      // never destroy the real moment in time.
+      _startDateTime: g.start.dateTime,
+      _endDateTime:
+        g.end && g.end.dateTime
+          ? g.end.dateTime
+          : null
     };
   }
 
@@ -1025,6 +1082,16 @@
     if(!state.signedIn) return Promise.reject(new Error("Not connected to Google Calendar."));
     var timeMin = new Date(parseISODate(startISO).setHours(0,0,0,0)).toISOString();
     var timeMax = new Date(addDays(parseISODate(endISO),1).setHours(0,0,0,0)).toISOString();
+
+    // Fetch one extra day on each side.
+    // This prevents timezone conversion near midnight
+    // from dropping events that belong in the visible range.
+    var fetchStart = addDays(parseISODate(startISO), -1); 
+    var fetchEnd =  addDays(parseISODate(endISO), 2);
+    var timeMin = new Date(fetchStart.setHours(0,0,0,0)).toISOString();   
+    var timeMax = new Date(fetchEnd.setHours(0,0,0,0)).toISOString();
+
+    
     return gapi.client.calendar.events.list({
       calendarId: 'primary',
       timeMin: timeMin,
@@ -1034,7 +1101,8 @@
       maxResults: 250
     }).then(function(resp){
       var items = (resp.result && resp.result.items) || [];
-      return items.filter(function(g){ return g.status !== 'cancelled' && g.start; }).map(mapGoogleEvent);
+      return items.filter(function(g){ return g.status !== 'cancelled' && g.start; })
+  .map(mapGoogleEvent).filter(function(e){return e.date >= startISO && e.date <= endISO;});
     }, function(err){
       var msg = (err && err.result && err.result.error && err.result.error.message) || "Couldn't reach Google Calendar.";
       throw new Error(msg);
@@ -1318,6 +1386,7 @@ function classifyQuickAdd(text){
     var savedTimezone = safeGet('planner-timezone');
     if(savedTimezone){state.timezoneChoice = savedTimezone;
     }
+    refreshPlannerDateContext();
     if(savedMode === 'sync' || savedMode === 'quick') state.mode = savedMode;
     var tasksRaw = safeGet('planner-tasks-v1');
     state.tasks = tasksRaw ? (function(){ try { return JSON.parse(tasksRaw); } catch(e){ return []; } })() : [];
@@ -2200,8 +2269,30 @@ document.getElementById('dayPrev').onclick = function(){
   document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekZoomOut').onclick = function(){state.weekZoom = Math.max(0.65, state.weekZoom - 0.15); renderWeek();  };
-  document.getElementById('timezoneSelect').onchange = function(){state.timezoneChoice = this.value; safeSet( 'planner-timezone',  state.timezoneChoice ); render();};
-  
+  document.getElementById('timezoneSelect').onchange = function(){
+    state.timezoneChoice = this.value;
+    safeSet(
+      'planner-timezone',
+      state.timezoneChoice
+    );
+    // "Today", "tomorrow", weekday parsing, etc.
+    // must now follow the selected timezone.
+    refreshPlannerDateContext();
+    // Cached Google events were formatted using the previous
+    // timezone, so force a fresh mapping.
+    state.rangeCache = {};
+    if(state.signedIn){
+      var range =
+        visibleRangeForActiveTab();
+      ensureRange(
+        range[0],
+        range[1],
+        true
+      );
+    } else {
+      render();
+    }
+  }; 
   document.getElementById('weekZoomIn').onclick = function(){
     state.weekZoom = Math.min(1.6, state.weekZoom + 0.15);
     renderWeek();
