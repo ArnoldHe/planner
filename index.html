@@ -751,11 +751,26 @@
   
     .calendar-week-head,
     .calendar-all-day-row,
-    .calendar-week-body{
+    .calendar-time-grid-wrap{
       min-width:0 !important;
       width:100%;
+    }
+    
+    .calendar-week-head{
       grid-template-columns:
         44px repeat(7, minmax(0, 1fr)) !important;
+    }
+    
+    .calendar-all-day-row,
+    .calendar-time-grid-wrap{
+      grid-template-columns:
+        44px minmax(0, 1fr) !important;
+    }
+    
+    .calendar-all-day-grid,
+    .calendar-time-grid{
+      grid-template-columns:
+        repeat(7, minmax(0, 1fr)) !important;
     }
   
     .calendar-week-head{
@@ -778,7 +793,7 @@
       padding-right:6px;
     }
   
-    .calendar-event{
+    .calendar-event-block{
       min-width:0;
       padding:4px 3px;
       border-radius:6px;
