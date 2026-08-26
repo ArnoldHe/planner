@@ -1687,49 +1687,30 @@ function classifyQuickAdd(text){
   );
 }
 
-function renderWeek(){
-  var monday = currentWeekMonday();
-  var sunday = addDays(monday,6);
-
-  var label =
-    monday.toLocaleDateString(undefined,{
-      month:'short',
-      day:'numeric'
-  var weekScroll =
-  document.querySelector('.calendar-week-scroll');
-
-  if(weekScroll && !weekScroll.dataset.initializedScroll){
-    var startAtHour = 7;
+  function renderWeek(){
+    var monday = currentWeekMonday();
+    var sunday = addDays(monday,6);
   
-    weekScroll.scrollTop =
-      startAtHour * PIXELS_PER_HOUR;
+    var label =
+      monday.toLocaleDateString(undefined,{
+        month:'short',
+        day:'numeric'
+      })
+      + ' – '
+      + sunday.toLocaleDateString(undefined,{
+        month:'short',
+        day:'numeric'
+      })
+      + ', '
+      + sunday.getFullYear();
   
-    weekScroll.dataset.initializedScroll = 'true';
-  }   
-
-  var weekScroll =
-  document.querySelector('.calendar-week-scroll');
-
-  if(weekScroll && !weekScroll.dataset.initializedScroll){
-    weekScroll.scrollTop =
-      7 * PIXELS_PER_HOUR;
+    document.getElementById('weekLabel').textContent = label;
   
-    weekScroll.dataset.initializedScroll = 'true';
-  }
-    })
-    + ' – '
-    + sunday.toLocaleDateString(undefined,{
-      month:'short',
-      day:'numeric'
-    })
-    + ', '
-    + sunday.getFullYear();
-
-  document.getElementById('weekLabel').textContent = label;
-  document.getElementById('weekZoomLabel').textContent =
-    Math.round(state.weekZoom * 100) + '%';
-  document.getElementById('weekSyncingIndicator').style.display =
-    state.syncing ? 'inline-flex' : 'none';
+    document.getElementById('weekZoomLabel').textContent =
+      Math.round(state.weekZoom * 100) + '%';
+  
+    document.getElementById('weekSyncingIndicator').style.display =
+      state.syncing ? 'inline-flex' : 'none';
 
 
 
@@ -1960,7 +1941,20 @@ function renderWeek(){
       switchTab('tasks');
     };
   });
+  
+    var weekScroll =
+    document.querySelector('.calendar-week-scroll');
+  
+    if(weekScroll && !weekScroll.dataset.initializedScroll){
+      weekScroll.scrollTop =
+        7 * PIXELS_PER_HOUR;
+    
+      weekScroll.dataset.initializedScroll = 'true';
+    }
+    
 }
+
+
   
   /* ---------------- Rendering: Tasks ---------------- */
   function filteredSortedTasks(){
