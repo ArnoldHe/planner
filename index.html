@@ -55,8 +55,14 @@
   *:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
   .app{
-    max-width: 1180px; margin: 0 auto;
-    padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(80px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+    width:100%;
+    max-width:1800px;
+    margin:0 auto;
+    padding:
+      max(28px, env(safe-area-inset-top))
+      max(32px, env(safe-area-inset-right))
+      max(80px, env(safe-area-inset-bottom))
+      max(32px, env(safe-area-inset-left));
   }
 
   /* ---------- Header ---------- */
