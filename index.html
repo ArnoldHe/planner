@@ -1706,6 +1706,16 @@ function renderWeek(){
   
     weekScroll.dataset.initializedScroll = 'true';
   }   
+
+  var weekScroll =
+  document.querySelector('.calendar-week-scroll');
+
+  if(weekScroll && !weekScroll.dataset.initializedScroll){
+    weekScroll.scrollTop =
+      7 * PIXELS_PER_HOUR;
+  
+    weekScroll.dataset.initializedScroll = 'true';
+  }
     })
     + ' – '
     + sunday.toLocaleDateString(undefined,{
