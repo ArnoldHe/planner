@@ -1080,8 +1080,6 @@
 
   function fetchCalendarEvents(startISO, endISO){
     if(!state.signedIn) return Promise.reject(new Error("Not connected to Google Calendar."));
-    var timeMin = new Date(parseISODate(startISO).setHours(0,0,0,0)).toISOString();
-    var timeMax = new Date(addDays(parseISODate(endISO),1).setHours(0,0,0,0)).toISOString();
 
     // Fetch one extra day on each side.
     // This prevents timezone conversion near midnight
