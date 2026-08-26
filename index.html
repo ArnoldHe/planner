@@ -404,8 +404,10 @@
   overflow:hidden;
 }
 .calendar-week-scroll{
-  overflow-x:auto;
+  overflow:auto;
   width:100%;
+  max-height:650px;
+  position:relative;
 }
 .calendar-week-head{
   display:grid;
@@ -413,6 +415,9 @@
   min-width:904px;
   border-bottom:1px solid var(--line);
   background:var(--paper-raised);
+  position:sticky;
+  top:0;
+  z-index:20;
 }
 .calendar-week-head-spacer{
   border-right:1px solid var(--line-soft);
@@ -445,6 +450,10 @@
   color:var(--accent-deep);
 }
 .calendar-all-day-row{
+  position:sticky;
+  top:58px;
+  z-index:19;
+  background:var(--paper-raised);
   display:grid;
   grid-template-columns:64px minmax(840px,1fr);
   min-width:904px;
@@ -1686,6 +1695,17 @@ function renderWeek(){
     monday.toLocaleDateString(undefined,{
       month:'short',
       day:'numeric'
+  var weekScroll =
+  document.querySelector('.calendar-week-scroll');
+
+  if(weekScroll && !weekScroll.dataset.initializedScroll){
+    var startAtHour = 7;
+  
+    weekScroll.scrollTop =
+      startAtHour * PIXELS_PER_HOUR;
+  
+    weekScroll.dataset.initializedScroll = 'true';
+  }   
     })
     + ' – '
     + sunday.toLocaleDateString(undefined,{
@@ -2263,9 +2283,15 @@ document.getElementById('dayPrev').onclick = function(){
     renderToday();
   };
 
-  document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
-  document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
-  document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
+  document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); 
+  var scroller = document.querySelector('.calendar-week-scroll');
+  if(scroller) delete scroller.dataset.initializedScroll; };
+  document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); 
+  var scroller = document.querySelector('.calendar-week-scroll');
+  if(scroller) delete scroller.dataset.initializedScroll; };
+  document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek();
+  var scroller = document.querySelector('.calendar-week-scroll');
+  if(scroller) delete scroller.dataset.initializedScroll; };
   document.getElementById('weekZoomOut').onclick = function(){state.weekZoom = Math.max(0.65, state.weekZoom - 0.15); renderWeek();  };
   document.getElementById('timezoneSelect').onchange = function(){
     state.timezoneChoice = this.value;
