@@ -148,6 +148,28 @@
     padding: 12px 16px; font-size: 13px; margin: -10px 0 22px; display:flex;
     justify-content:space-between; align-items:center; gap: 12px; flex-wrap:wrap;
   }
+
+  .timezone-select{
+  border:1px solid var(--line);
+  background:var(--paper-raised);
+  color:var(--ink-soft);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  padding:5px 10px;
+  border-radius:999px;
+  cursor:pointer;
+}
+
+.timezone-select:hover{
+  color:var(--accent-deep);
+  border-color:var(--accent-soft);
+}
+
+.timezone-select:focus{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+  
   .error-banner button{
     border: 1px solid var(--rose); background: transparent; color: var(--rose);
     font-size: 12px; font-weight:600; padding: 5px 12px; border-radius: 999px; cursor:pointer;
@@ -726,11 +748,20 @@
 
   <div class="sync-bar">
     <div class="sync-status" id="syncStatus"><span class="sync-dot"></span><span id="syncStatusText">Loading…</span></div>
-    <div style="display:flex; gap:8px;">
-      <button type="button" id="modeBtn"><span id="modeBtnLabel">Switch mode</span></button>
-      <button type="button" id="connectBtn"><span id="connectBtnLabel">Connect Google Calendar</span></button>
-      <button type="button" id="refreshBtn" style="display:none;"><span id="refreshBtnLabel">↻ Refresh calendar</span></button>
-    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <select id="timezoneSelect" class="timezone-select" aria-label="Planner timezone">
+      <option value="local">Timezone: Local</option>
+      <option value="America/Los_Angeles">Pacific Time</option>
+      <option value="America/Denver">Mountain Time</option>
+      <option value="America/Chicago">Central Time</option>
+      <option value="America/New_York">Eastern Time</option>
+      <option value="Asia/Shanghai">China / Taiwan</option>
+      <option value="Europe/London">London</option>
+      <option value="UTC">UTC</option>
+    </select>
+    <button type="button" id="modeBtn"><span id="modeBtnLabel">Switch mode</span></button>
+    <button type="button" id="connectBtn"><span id="connectBtnLabel">Connect Google Calendar</span></button>
+    <button type="button" id="refreshBtn" style="display:none;"><span id="refreshBtnLabel">↻ Refresh calendar</span></button>
   </div>
 
   <div class="error-banner" id="errorBanner" style="display:none;">
@@ -878,7 +909,7 @@
 
   var GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.events";
   var GOOGLE_DISCOVERY = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
-  var LOCAL_TZ = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "America/Los_Angeles";
+  var BROWSER_TZ = (Intl.DateTimeFormat().resolvedOptions().timeZone) ||  "America/Los_Angeles";
   var RANGE_FRESH_MS = 90000; // don't re-fetch the same visible range more than once per 90s unless forced
 
   /* ---------------- Utilities ---------------- */
@@ -900,6 +931,37 @@
     var p = hhmm.split(':'); var h = parseInt(p[0]); var m = p[1];
     var suffix = h>=12 ? 'pm':'am'; var h12 = h%12; if(h12===0) h12=12;
     return h12 + (m==='00' ? '' : ':'+m) + suffix;
+  }
+  function currentTimezone(){
+    return state.timezoneChoice === 'local'
+      ? BROWSER_TZ
+      : state.timezoneChoice;
+  }
+  function dateTimePartsInTimezone(date){
+    var parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: currentTimezone(),
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(date);
+    var out = {}; 
+    parts.forEach(function(p){
+      if(p.type !== 'literal'){
+        out[p.type] = p.value;
+      }
+    });
+    return {
+      date:
+        out.year + '-' +
+        out.month + '-' +
+        out.day,  
+      time:
+        out.hour + ':' +
+        out.minute
+    };
   }
   function escapeHtml(s){
     return String(s==null?'':s).replace(/[&<>"']/g, function(c){
@@ -926,6 +988,13 @@
   var todayDate = new Date();
   var todayISO = toISODate(todayDate);
 
+  function refreshPlannerDateContext(){
+    var nowParts = dateTimePartsInTimezone(new Date());
+  
+    todayISO = nowParts.date;
+    todayDate = parseISODate(todayISO);
+  }
+
   /* ---------------- State ---------------- */
   var state = {
     tasks: [],
@@ -938,6 +1007,7 @@
     activeTab: 'today',
     dayOffset: 0,
     weekOffset: 0,
+    timezoneChoice: 'local',
     weekZoom: 1,
     taskFilter: 'all',
     taskSort: 'deadline',
@@ -972,22 +1042,54 @@
                location:g.location||null, notes:g.description||null };
     }
     var sd = new Date(g.start.dateTime);
-    var ed = g.end && g.end.dateTime ? new Date(g.end.dateTime) : null;
+    var ed =
+      g.end && g.end.dateTime
+        ? new Date(g.end.dateTime)
+        : null;
+    
+    var startParts =
+      dateTimePartsInTimezone(sd);
+    
+    var endParts =
+      ed
+        ? dateTimePartsInTimezone(ed)
+        : null;
+    
     return {
-      id: g.id, title: title,
-      date: toISODate(sd),
-      start: pad(sd.getHours()) + ':' + pad(sd.getMinutes()),
-      end: ed ? (pad(ed.getHours()) + ':' + pad(ed.getMinutes())) : null,
+      id: g.id,
+      title: title,
+    
+      date: startParts.date,
+      start: startParts.time,
+      end: endParts ? endParts.time : null,
+    
       allDay: false,
+    
       location: g.location || null,
-      notes: g.description || null
+      notes: g.description || null,
+    
+      // Keep the original timestamps so timezone changes
+      // never destroy the real moment in time.
+      _startDateTime: g.start.dateTime,
+      _endDateTime:
+        g.end && g.end.dateTime
+          ? g.end.dateTime
+          : null
     };
   }
 
   function fetchCalendarEvents(startISO, endISO){
     if(!state.signedIn) return Promise.reject(new Error("Not connected to Google Calendar."));
-    var timeMin = new Date(parseISODate(startISO).setHours(0,0,0,0)).toISOString();
-    var timeMax = new Date(addDays(parseISODate(endISO),1).setHours(0,0,0,0)).toISOString();
+
+    // Fetch one extra day on each side.
+    // This prevents timezone conversion near midnight
+    // from dropping events that belong in the visible range.
+    var fetchStart = addDays(parseISODate(startISO), -1); 
+    var fetchEnd =  addDays(parseISODate(endISO), 2);
+    var timeMin = new Date(fetchStart.setHours(0,0,0,0)).toISOString();   
+    var timeMax = new Date(fetchEnd.setHours(0,0,0,0)).toISOString();
+
+    
     return gapi.client.calendar.events.list({
       calendarId: 'primary',
       timeMin: timeMin,
@@ -997,7 +1099,8 @@
       maxResults: 250
     }).then(function(resp){
       var items = (resp.result && resp.result.items) || [];
-      return items.filter(function(g){ return g.status !== 'cancelled' && g.start; }).map(mapGoogleEvent);
+      return items.filter(function(g){ return g.status !== 'cancelled' && g.start; })
+  .map(mapGoogleEvent).filter(function(e){return e.date >= startISO && e.date <= endISO;});
     }, function(err){
       var msg = (err && err.result && err.result.error && err.result.error.message) || "Couldn't reach Google Calendar.";
       throw new Error(msg);
@@ -1008,8 +1111,8 @@
     if(!state.signedIn) return Promise.resolve({ success:false, error:"Connect Google Calendar first." });
     var resource = {
       summary: ev.title,
-      start: { dateTime: toRFC3339(ev.date, ev.start), timeZone: LOCAL_TZ },
-      end:   { dateTime: toRFC3339(ev.date, ev.end),   timeZone: LOCAL_TZ }
+      start: { dateTime: toRFC3339(ev.date, ev.start), timeZone: currentTimezone() },
+      end:   { dateTime: toRFC3339(ev.date, ev.end),   timeZone: currentTimezone() }
     };
     if(ev.location) resource.location = ev.location;
     if(ev.notes) resource.description = ev.notes;
@@ -1035,7 +1138,7 @@
       'action=TEMPLATE',
       'text=' + encodeURIComponent(ev.title),
       'dates=' + dcompact + 'T' + s + '/' + dcompact + 'T' + e,
-      'ctz=' + encodeURIComponent(LOCAL_TZ)
+      'ctz=' + encodeURIComponent(currentTimezone())
     ];
     if(ev.location) params.push('location=' + encodeURIComponent(ev.location));
     if(ev.notes) params.push('details=' + encodeURIComponent(ev.notes));
@@ -1278,6 +1381,10 @@ function classifyQuickAdd(text){
 
   function loadAll(){
     var savedMode = safeGet('planner-mode');
+    var savedTimezone = safeGet('planner-timezone');
+    if(savedTimezone){state.timezoneChoice = savedTimezone;
+    }
+    refreshPlannerDateContext();
     if(savedMode === 'sync' || savedMode === 'quick') state.mode = savedMode;
     var tasksRaw = safeGet('planner-tasks-v1');
     state.tasks = tasksRaw ? (function(){ try { return JSON.parse(tasksRaw); } catch(e){ return []; } })() : [];
@@ -1288,6 +1395,12 @@ function classifyQuickAdd(text){
         state.events = cache.events || [];
         state.lastSyncedAt = cache.syncedAt ? new Date(cache.syncedAt) : null;
       } catch(e){}
+    }
+    var timezoneSelect =
+      document.getElementById('timezoneSelect');
+    
+    if(timezoneSelect){
+      timezoneSelect.value = state.timezoneChoice;
     }
     render();
   }
@@ -1665,7 +1778,7 @@ function renderWeek(){
 
   /* ---------- Time grid ---------- */
 
-  var START_HOUR = 6;
+  var START_HOUR = 0;
   var END_HOUR = 24;
   var PIXELS_PER_HOUR = 60 * state.weekZoom;
     document.documentElement.style.setProperty(
@@ -2153,11 +2266,31 @@ document.getElementById('dayPrev').onclick = function(){
   document.getElementById('weekPrev').onclick = function(){ state.weekOffset--; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekNext').onclick = function(){ state.weekOffset++; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
   document.getElementById('weekTodayBtn').onclick = function(){ state.weekOffset = 0; var m=currentWeekMonday(); ensureRange(toISODate(m), toISODate(addDays(m,6)), false); renderWeek(); };
-  document.getElementById('weekZoomOut').onclick = function(){
-    state.weekZoom = Math.max(0.65, state.weekZoom - 0.15);
-    renderWeek();
-    };
-
+  document.getElementById('weekZoomOut').onclick = function(){state.weekZoom = Math.max(0.65, state.weekZoom - 0.15); renderWeek();  };
+  document.getElementById('timezoneSelect').onchange = function(){
+    state.timezoneChoice = this.value;
+    safeSet(
+      'planner-timezone',
+      state.timezoneChoice
+    );
+    // "Today", "tomorrow", weekday parsing, etc.
+    // must now follow the selected timezone.
+    refreshPlannerDateContext();
+    // Cached Google events were formatted using the previous
+    // timezone, so force a fresh mapping.
+    state.rangeCache = {};
+    if(state.signedIn){
+      var range =
+        visibleRangeForActiveTab();
+      ensureRange(
+        range[0],
+        range[1],
+        true
+      );
+    } else {
+      render();
+    }
+  }; 
   document.getElementById('weekZoomIn').onclick = function(){
     state.weekZoom = Math.min(1.6, state.weekZoom + 0.15);
     renderWeek();
